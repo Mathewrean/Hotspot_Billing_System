@@ -25,7 +25,7 @@ jobs:
       # STEP 1: Make whatever change you want the PR to contain.
       # Replace this with your real logic (script, generator, formatter…).
       # ---------------------------------------------------------------
-      - name: Make a change
+      - name: refactor continue-on-error: UI/UX
         run: |
           set -euo pipefail
           echo "Last auto-update: $(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> AUTO_UPDATE.txt
