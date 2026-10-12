@@ -38,7 +38,7 @@ jobs:
         with:
           branch: automated/auto-pr
           base: main
-          title: "chore: automated update"
+          title: "chore: fetch latest commits and repo metrics"
           body: |
             This PR was opened automatically by the **Auto PR** workflow.
 
