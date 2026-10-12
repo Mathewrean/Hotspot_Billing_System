@@ -37,7 +37,7 @@ jobs:
         uses: peter-evans/create-pull-request@v6
         with:
           branch: automated/auto-pr
-          base: master
+          base: main
           title: "chore: automated update"
           body: |
             This PR was opened automatically by the **Auto PR** workflow.
