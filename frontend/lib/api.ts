@@ -1,5 +1,5 @@
 // API configuration optimized for Node.js/Express backend
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://anotherone-production-dcdb.up.railway.app"
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "https://fastnet-api.onrender.com"
 
 // Daraja Mpesa API base URL
 export const DARAJA_API_BASE_URL = "http://localhost:3000"
