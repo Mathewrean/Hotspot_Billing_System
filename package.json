@@ -6,20 +6,14 @@
   "description": "FastNet - WiFi billing system with Express, Prisma, and Next.js frontend",
   "author": "Mathewrean",
   "license": "ISC",
-
   "engines": {
     "node": ">=18 <=22"
-  }, 
-
+  },
   "scripts": {
     "dev": "cd frontend && npm run dev",
     "build": "cd frontend && npm install && npm run build",
     "start": "NODE_ENV=production node server.js",
-
     "postinstall": "npx prisma generate",
-
-    "deploy:railway": "npm install && npm run build && railway up",
-
     "deploy:railway": "npm install && npm run build && railway up",
     "pm2:start": "pm2 start ecosystem.config.js",
     "pm2:stop": "pm2 stop ecosystem.config.js",
@@ -27,13 +21,10 @@
     "pm2:delete": "pm2 delete ecosystem.config.js",
     "pm2:logs": "pm2 logs wifi-billing-api",
     "pm2:monit": "pm2 monit",
-
     "docker:build": "docker build -t wifi-billing .",
     "docker:run": "docker run -p 5000:5000 --env-file .env wifi-billing",
-
     "render:deploy": "npm run build && npm start"
   },
-
   "dependencies": {
     "@prisma/client": "^6.15.0",
     "axios": "^1.20.0",
@@ -57,6 +48,7 @@
     "prisma": "^6.19.3",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
+    "routeros-client": "^1.1.1",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "winston": "^3.18.3"
