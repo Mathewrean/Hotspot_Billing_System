@@ -46,7 +46,7 @@ export function Header() {
                 <Wifi className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-slate-900 dark:text-white">Invoicify Pro</h1>
+                <h1 className="text-xl font-bold text-slate-900 dark:text-white">FastNet</h1>
                 <p className="text-xs text-slate-600 dark:text-slate-400">High-Speed Internet</p>
               </div>
             </Link>

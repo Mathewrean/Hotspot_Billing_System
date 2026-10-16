@@ -111,6 +111,6 @@ No harassment, personal attacks, or sharing private info.
 
 Maintain professionalism in all interactions.
 
-Enforcement Contact: mwakidenice@gmail.com
+Enforcement Contact: mathewrean@gmail.com
 
 Full Code of Conduct: CODE_OF_CONDUCT.md

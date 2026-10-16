@@ -47,7 +47,7 @@ A comprehensive WiFi billing system with M-Pesa integration, loan management, an
    | `JWT_SECRET` | Secure random string for JWT | `your-secure-random-jwt-secret` |
    | `ADMIN_USERNAME` | Admin login username | `admin` |
    | `ADMIN_PASSWORD` | Admin login password | `secure_password_123` |
-   | `ADMIN_EMAIL` | Admin email | `admin@yourdomain.com` |
+   | `ADMIN_EMAIL` | Admin email | `admin@fastnet.com` |
    | `MPESA_CONSUMER_KEY` | M-Pesa API key | From Safaricom Portal |
    | `MPESA_CONSUMER_SECRET` | M-Pesa API secret | From Safaricom Portal |
    | `MPESA_SHORTCODE` | Your M-Pesa shortcode | `123456` |
@@ -188,7 +188,7 @@ JWT_SECRET=your-secure-random-jwt-secret-here
 # Admin Credentials
 ADMIN_USERNAME=your_admin_username
 ADMIN_PASSWORD=your_secure_admin_password
-ADMIN_EMAIL=admin@yourdomain.com
+ADMIN_EMAIL=admin@fastnet.com
 
 # M-Pesa Integration
 MPESA_ENABLED=true
@@ -196,7 +196,7 @@ MPESA_CONSUMER_KEY=your_mpesa_consumer_key
 MPESA_CONSUMER_SECRET=your_mpesa_consumer_secret
 MPESA_SHORTCODE=your_mpesa_shortcode
 MPESA_PASSKEY=your_mpesa_passkey
-MPESA_CALLBACK_URL=https://yourdomain.com/api/mpesa/callback
+MPESA_CALLBACK_URL=https://fastnet.com/api/mpesa/callback
 
 # MikroTik Integration
 MIKROTIK_ENABLED=true
@@ -229,12 +229,12 @@ Render provides managed PostgreSQL and automatic deployments from Git.
    JWT_SECRET: your-secure-random-jwt-secret
    ADMIN_USERNAME: your_admin_username
    ADMIN_PASSWORD: your_secure_admin_password
-   ADMIN_EMAIL: admin@yourdomain.com
+   ADMIN_EMAIL: admin@fastnet.com
    MPESA_CONSUMER_KEY: your_mpesa_consumer_key
    MPESA_CONSUMER_SECRET: your_mpesa_consumer_secret
    MPESA_SHORTCODE: your_mpesa_shortcode
    MPESA_PASSKEY: your_mpesa_passkey
-   MPESA_CALLBACK_URL: https://your-render-app.onrender.com/api/mpesa/callback
+   MPESA_CALLBACK_URL: https://fastnet.onrender.com/api/mpesa/callback
    MIKROTIK_ENABLED: true
    MIKROTIK_HOST: your_mikrotik_ip
    MIKROTIK_USER: your_mikrotik_username
@@ -407,7 +407,7 @@ For issues, check:
     <td align="center">
       <img src="https://res.cloudinary.com/dqv8dlj2s/image/upload/v1772276752/IMG_20251220_111730_cqlgfo.jpg" width="750" height="250" />
 </a>
-      <h4>mwakidenis</h4>
+      <h4>fastnet</h4>
     </td>
   </tr>
 </table>

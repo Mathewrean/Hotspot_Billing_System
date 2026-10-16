@@ -19,7 +19,7 @@ const AdminHeader = ({ children }: AdminHeaderProps) => (
               <Wifi className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white">Invoicify Pro Admin</h1>
+              <h1 className="text-xl font-bold text-slate-900 dark:text-white">FastNet Admin</h1>
               <p className="text-xs text-slate-600 dark:text-slate-400">Management Dashboard</p>
             </div>
           </Link>

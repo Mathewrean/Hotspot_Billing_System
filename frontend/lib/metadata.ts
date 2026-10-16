@@ -13,7 +13,7 @@ export function generateMetadata(options: PageMetadataOptions = {}): Metadata {
   const {
     title = PROJECT_NAME,
     description = 'WiFi Billing System - Fast, reliable, and affordable internet access',
-    keywords = ['WiFi', 'internet', 'billing', 'M-Pesa', 'Kenya', 'Invoicify Pro'],
+    keywords = ['WiFi', 'internet', 'billing', 'M-Pesa', 'Kenya', 'FastNet'],
     image = '/og-image.jpg',
     noIndex = false
   } = options
@@ -54,7 +54,7 @@ export function generatePageMetadata(
 
 // Predefined metadata for common pages
 export const homeMetadata = generatePageMetadata('Home', 'Fast, reliable, and affordable WiFi internet access powered by M-Pesa payments.')
-export const aboutMetadata = generatePageMetadata('About Us', 'Learn about Invoicify Pro, our mission, team, and commitment to providing quality internet services.')
+export const aboutMetadata = generatePageMetadata('About Us', 'Learn about FastNet, our mission, team, and commitment to providing quality internet services.')
 export const adminMetadata = generatePageMetadata('Admin Dashboard', 'Manage users, transactions, and system settings for the WiFi billing system.')
 export const supportMetadata = generatePageMetadata('Support', 'Get help with your WiFi connection, billing, or technical issues.')
 export const packagesMetadata = generatePageMetadata('WiFi Packages', 'Choose from our range of WiFi packages with different speeds and durations.')

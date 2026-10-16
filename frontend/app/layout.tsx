@@ -5,9 +5,9 @@ import './globals.css'
 import { generateMetadata } from '@/lib/metadata'
 
 export const metadata: Metadata = generateMetadata({
-  title: 'Invoicify Pro - Fast, Reliable Internet Access',
+  title: 'FastNet - Fast, Reliable Internet Access',
   description: 'WiFi Billing System - Fast, reliable, and affordable internet access powered by M-Pesa payments in Kenya.',
-  keywords: ['WiFi', 'internet', 'billing', 'M-Pesa', 'Kenya', 'Invoicify Pro', 'WiFi packages'],
+  keywords: ['WiFi', 'internet', 'billing', 'M-Pesa', 'Kenya', 'FastNet', 'WiFi packages'],
 })
 
 export default function RootLayout({

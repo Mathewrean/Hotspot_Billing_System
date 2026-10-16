@@ -18,7 +18,7 @@ If you discover a security vulnerability in this project, please report it respo
 
 Send a detailed report to:
 
-📧 **mwakidenice@gmail.com**
+📧 **mathewrean@gmail.com**
 
 Your report should include:
 

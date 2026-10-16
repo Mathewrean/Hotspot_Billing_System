@@ -150,7 +150,7 @@ export default function LoginPage() {
               <Wifi className="h-6 w-6 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Welcome to Invoicify Pro</CardTitle>
+          <CardTitle className="text-2xl font-bold">Welcome to FastNet</CardTitle>
           <p className="text-sm text-slate-600 dark:text-slate-400">
             Sign in to your account or create a new one
           </p>

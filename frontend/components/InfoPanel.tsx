@@ -4,7 +4,7 @@ import { Zap, Shield, Globe } from "lucide-react"
 const InfoPanel = () => (
   <Card className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 backdrop-blur">
     <CardHeader>
-      <CardTitle className="text-slate-900 dark:text-white">Why Choose Invoicify Pro?</CardTitle>
+      <CardTitle className="text-slate-900 dark:text-white">Why Choose FastNet?</CardTitle>
     </CardHeader>
     <CardContent className="space-y-4">
       <div className="flex items-start space-x-3">

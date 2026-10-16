@@ -1,7 +1,7 @@
 const bcrypt = require("bcryptjs");
 const prisma = require("../config/prismaClient");
 
-const email = "mwakidenice.md@gmail.com";  // Change this
+const email = "mathewrean@gmail.com";  // Change this
 const password = "73641483"; // Change this
 
 async function createAdmin() {

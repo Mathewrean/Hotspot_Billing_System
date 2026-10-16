@@ -55,7 +55,7 @@ export default function AdminLogin() {
           </div>
           <CardTitle className="text-2xl font-bold">Admin Login</CardTitle>
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            Access the Invoicify Pro Admin Dashboard
+            Access the FastNet Admin Dashboard
           </p>
         </CardHeader>
         <CardContent>

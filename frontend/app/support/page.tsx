@@ -46,8 +46,8 @@ const contactMethods = [
     {
     icon: Mail,
     title: "Email Support",
-    contact: "support@invoicifydenis.co.ke",
-      contact: "support@invoicifydenis.co.ke",
+    contact: "support@fastnet.com",
+      contact: "support@fastnet.com",
     availability: "Response within 2 hours",
     color: "blue",
   },
@@ -90,7 +90,7 @@ const faqs = [
       {
         question: "How do I connect to the WiFi?",
         answer:
-          "After successful payment, you'll receive connection details. Select the Invoicify Pro network and enter the provided credentials.",
+          "Select the FastNet network and enter the provided credentials.",
       },
       {
         question: "Why is my internet slow?",

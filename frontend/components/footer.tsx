@@ -18,12 +18,12 @@ export function Footer() {
               <div className="flex h-10 w-10 items-center justify-center rounded-lg overflow-hidden">
                 <Image
                   src="/logo.svg"
-                  alt="Invoicify Pro"
+                  alt="FastNet"
                   width={40}
                   height={40}
                 />
               </div>
-              <span className="text-lg font-bold text-slate-900 dark:text-white">Invoicify Pro</span>
+              <span className="text-lg font-bold text-slate-900 dark:text-white">FastNet</span>
             </div>
             <p className="text-sm text-slate-600 dark:text-slate-400 max-w-xs">
               Providing fast, reliable internet access with seamless M-Pesa integration for easy payments.
@@ -88,7 +88,7 @@ export function Footer() {
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Contact</h3>
             <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
-              <li>Email: support@invoicifydenis.co.ke</li>
+              <li>Email: support@fastnet.com</li>
               <li>Phone: 0798750585</li>
               <li>Available 24/7</li>
             </ul>
@@ -96,7 +96,7 @@ export function Footer() {
         </div>
 
         <div className="mt-8 pt-8 border-t border-slate-200/20 dark:border-white/10 flex flex-col sm:flex-row justify-between items-center">
-          <p className="text-sm text-slate-600 dark:text-slate-400">© {currentYear} Invoicify Pro. All rights reserved.</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">© {currentYear} FastNet. All rights reserved.</p>
           <div className="flex items-center space-x-4 mt-4 sm:mt-0">
             <Badge
               variant="outline"

@@ -76,12 +76,12 @@ export default function AboutPage() {
             <h1 className="text-4xl lg:text-6xl font-bold text-slate-900 dark:text-white mb-6">
               About
               <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-                Invoicify Pro
+                FastNet
               </span>
             </h1>
             <p className="text-xl text-slate-600 dark:text-slate-300 mb-8 max-w-3xl mx-auto">
               We're on a mission to provide fast, reliable, and affordable internet access to everyone. Founded in 2019,
-              Invoicify Pro has grown to serve thousands of customers across Kenya.
+              FastNet has grown to serve thousands of customers across Kenya.
             </p>
           </div>
 
@@ -106,7 +106,7 @@ export default function AboutPage() {
               <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-6">Our Story</h2>
               <div className="space-y-4 text-slate-600 dark:text-slate-400">
                 <p>
-                  Invoicify Pro was born from a simple observation: internet access in Kenya was either too expensive or
+                  FastNet was born from a simple observation: internet access in Kenya was either too expensive or
                   too unreliable for many people. Our founders, having worked in the telecommunications industry for
                   over a decade, decided to change that.
                 </p>
@@ -124,7 +124,7 @@ export default function AboutPage() {
             <div className="relative">
               <img
                 src="/placeholder.svg?height=400&width=600"
-                alt="Invoicify Pro Office"
+                alt="FastNet Office"
                 className="rounded-lg shadow-lg w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-lg"></div>
