@@ -19,7 +19,7 @@ async function testConnection() {
 
         // Run a simple command to fetch router resource details (e.g., uptime, board name)
         const resources = await conn.write('/system/resource/print');
-        console.log('\n📊 Router System Information:');
+        console.log('\n Router System Information:');
         console.log(`- Board Name: ${resources[0]['board-name']}`);
         console.log(`- RouterOS Version: ${resources[0]['version']}`);
         console.log(`- Uptime: ${resources[0]['uptime']}`);
