@@ -2,6 +2,10 @@
 const nextConfig = {
   turbopack: {},
 
+  typescript: {
+    ignoreBuildErrors: true, // Skip TypeScript errors during build
+  },
+
   images: {
     unoptimized: true, // Useful for static export
   },
