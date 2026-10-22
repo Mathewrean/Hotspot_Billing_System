@@ -35,7 +35,7 @@ const UserManagement = () => {
       })
 
       // Also fetch auth users (registered users)
-      const authResponse = await fetch('http://localhost:5000/auth/profile', {
+      const authResponse = await fetch('/api/auth/profile', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('admin_token') || localStorage.getItem('user_token')}`
         }

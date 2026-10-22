@@ -76,7 +76,7 @@ router.post("/register", async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { userId: user.id, username: user.username },
+      { userId: user.id, username: user.username, role: "user" },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -118,37 +118,6 @@ router.post("/login", async (req, res) => {
   }
 
   try {
-    // Check for admin accounts first
-    const adminAccounts = [
-      { username: 'Mathew Kioko', password: 'Mathew12345', email: 'kiokomathew1985@gmail.com', role: 'admin' },
-      { username: 'Denis2', password: 'Denis2', email: 'denis@gmail.com', role: 'admin' }
-    ];
-
-    const adminAccount = adminAccounts.find(account => account.username === username);
-    if (adminAccount && password === adminAccount.password) {
-      // Generate admin JWT token
-      const token = jwt.sign(
-        { userId: adminAccount.username, username: adminAccount.username, role: 'admin' },
-        process.env.JWT_SECRET,
-        { expiresIn: "7d" }
-      );
-
-      return res.json({
-        success: true,
-        message: "Admin login successful",
-        data: {
-          user: {
-            id: adminAccount.username,
-            username: adminAccount.username,
-            email: adminAccount.email,
-            role: 'admin'
-          },
-          token
-        },
-        redirectTo: '/admin'
-      });
-    }
-
     // Find regular user by username
     const user = await prisma.authUser.findUnique({
       where: { username: username }
@@ -172,7 +141,7 @@ router.post("/login", async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { userId: user.id, username: user.username },
+      { userId: user.id, username: user.username, role: "user" },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -212,6 +181,9 @@ router.get("/profile", async (req, res) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.role !== "user" || !Number.isSafeInteger(decoded.userId)) {
+      return res.status(403).json({ success: false, error: "User token required" });
+    }
     const user = await prisma.authUser.findUnique({
       where: { id: decoded.userId },
       select: {

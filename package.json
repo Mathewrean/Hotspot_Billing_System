@@ -19,10 +19,10 @@
     "pm2:stop": "pm2 stop ecosystem.config.js",
     "pm2:restart": "pm2 restart ecosystem.config.js",
     "pm2:delete": "pm2 delete ecosystem.config.js",
-    "pm2:logs": "pm2 logs wifi-billing-api",
+    "pm2:logs": "pm2 logs fastnet-api",
     "pm2:monit": "pm2 monit",
-    "docker:build": "docker build -t wifi-billing .",
-    "docker:run": "docker run -p 5000:5000 --env-file .env wifi-billing",
+    "docker:build": "docker build -t fastnet .",
+    "docker:run": "docker run -p 5000:5000 --env-file .env fastnet",
     "render:deploy": "npm run build && npm start"
   },
   "dependencies": {

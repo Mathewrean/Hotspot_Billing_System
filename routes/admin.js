@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const prisma = require("../config/prismaClient");
 const jwt = require("jsonwebtoken");
-const bcrypt = require("bcrypt"); // optional if later you want hashed passwords
 const logger = require("../src/logger");
 const {
   disconnectAllUsers,
@@ -21,16 +20,16 @@ router.post("/login", async (req, res) => {
     logger.info("Admin login attempt", { username });
 
     // Check primary admin credentials
-    const isPrimaryAdmin = (
+    const hasPrimaryCredentials = Boolean(process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD);
+    const isPrimaryAdmin = hasPrimaryCredentials &&
       username === process.env.ADMIN_USERNAME &&
-      password === process.env.ADMIN_PASSWORD
-    );
+      password === process.env.ADMIN_PASSWORD;
 
     // Check secondary admin credentials
-    const isSecondaryAdmin = (
+    const hasSecondaryCredentials = Boolean(process.env.ADMIN_USERNAME_2 && process.env.ADMIN_PASSWORD_2);
+    const isSecondaryAdmin = hasSecondaryCredentials &&
       username === process.env.ADMIN_USERNAME_2 &&
-      password === process.env.ADMIN_PASSWORD_2
-    );
+      password === process.env.ADMIN_PASSWORD_2;
 
     if (isPrimaryAdmin) {
       const token = jwt.sign(
@@ -195,13 +194,19 @@ router.post("/users/:id/unblock", authMiddleware, async (req, res) => {
 
 router.post("/users/:id/disconnect", authMiddleware, async (req, res) => {
   try {
-    const { id } = req.params;
-    const [rows] = await db.promise().query("SELECT mac_address AS mac FROM payments WHERE id = ? LIMIT 1", [id]);
-    const mac = rows && rows[0] && rows[0].mac;
-    if (!mac) return res.json({ success: true });
-    const resp = await disconnectByMac(mac);
+    const paymentId = Number(req.params.id);
+    if (!Number.isSafeInteger(paymentId) || paymentId < 1) {
+      return res.status(400).json({ success: false, error: "Invalid payment ID" });
+    }
+    const payment = await prisma.payment.findUnique({
+      where: { id: paymentId },
+      select: { macAddress: true },
+    });
+    if (!payment?.macAddress) return res.json({ success: true, message: "No active device found" });
+    const resp = await disconnectByMac(payment.macAddress);
     return res.json({ success: resp.success, message: resp.message });
   } catch (error) {
+    logger.error("Failed to disconnect user", { error: error.message, paymentId: req.params.id });
     return res.status(500).json({ success: false, error: "Failed to disconnect user" });
   }
 });

@@ -81,14 +81,6 @@ export function Header() {
             </Link>
             {isAuthenticated ? (
               <div className="flex items-center">
-                {user?.username === 'Denis2' && (
-                  <Link
-                    href="/admin"
-                    className="px-4 py-2 text-sm font-medium text-black hover:bg-black hover:text-white"
-                  >
-                    Admin Panel
-                  </Link>
-                )}
                 <Button
                   onClick={handleLogout}
                   variant="ghost"
@@ -159,15 +151,6 @@ export function Header() {
 
               {isAuthenticated ? (
                 <div className="col-span-2 flex flex-col">
-                  {user?.username === 'Denis2' && (
-                    <Link
-                      href="/admin"
-                      className="border-b-2 border-r-2 border-black p-3 text-sm font-medium text-black hover:bg-black hover:text-white"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      Admin Panel
-                    </Link>
-                  )}
                   <Button
                     onClick={() => {
                       handleLogout()

@@ -1,6 +1,6 @@
 module.exports = {
   apps: [{
-    name: 'wifi-billing-api',
+    name: 'fastnet-api',
     script: 'index.js',
     instances: 1,
     autorestart: true,

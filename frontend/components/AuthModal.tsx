@@ -42,7 +42,7 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalProps) {
     setError('')
 
     try {
-      const response = await fetch('http://localhost:5000/auth/login', {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -57,15 +57,15 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalProps) {
       }
 
       // Store auth data
-      localStorage.setItem('user_token', data.token)
-      localStorage.setItem('user_data', JSON.stringify(data.user))
+      localStorage.setItem('user_token', data.data.token)
+      localStorage.setItem('user_data', JSON.stringify(data.data.user))
 
-      onAuthSuccess(data.user, data.token)
+      onAuthSuccess(data.data.user, data.data.token)
       onClose()
 
       toast({
         title: 'Login successful',
-        description: `Welcome back, ${data.user.name}!`,
+        description: `Welcome back, ${data.data.user.username}!`,
       })
 
       // Reset form
@@ -91,7 +91,7 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalProps) {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/auth/register', {
+      const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -116,15 +116,15 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalProps) {
       }
 
       // Store auth data
-      localStorage.setItem('user_token', data.token)
-      localStorage.setItem('user_data', JSON.stringify(data.user))
+      localStorage.setItem('user_token', data.data.token)
+      localStorage.setItem('user_data', JSON.stringify(data.data.user))
 
-      onAuthSuccess(data.user, data.token)
+      onAuthSuccess(data.data.user, data.data.token)
       onClose()
 
       toast({
         title: 'Account created successfully',
-        description: `Welcome, ${data.user.name}!`,
+        description: `Welcome, ${data.data.user.username}!`,
       })
 
       // Reset form

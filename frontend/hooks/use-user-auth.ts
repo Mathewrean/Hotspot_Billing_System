@@ -67,7 +67,7 @@ export function useUserAuth() {
   // Login function
   const login = async (username: string, password: string) => {
     try {
-      const response = await fetch('http://localhost:5000/auth/login', {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
@@ -79,17 +79,6 @@ export function useUserAuth() {
       }
 
       const data = await response.json()
-
-      // Check if admin login (has redirectTo)
-      if (data.redirectTo === '/admin') {
-        // Store admin auth data
-        localStorage.setItem('admin_token', data.data.token)
-        localStorage.setItem('admin_data', JSON.stringify(data.data.user))
-
-        // Redirect to admin panel
-        window.location.href = '/admin'
-        return { success: true, isAdmin: true }
-      }
 
       // Store regular user auth data
       localStorage.setItem('user_token', data.data.token)
@@ -112,7 +101,7 @@ export function useUserAuth() {
   // Signup function
   const signup = async (name: string, email: string, phone: string, password: string) => {
     try {
-      const response = await fetch('http://localhost:5000/auth/register', {
+      const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: name, email, phone, password }),
@@ -129,13 +118,13 @@ export function useUserAuth() {
       const data = await response.json()
 
       // Store auth data
-      localStorage.setItem('user_token', data.token)
-      localStorage.setItem('user_data', JSON.stringify(data.user))
+      localStorage.setItem('user_token', data.data.token)
+      localStorage.setItem('user_data', JSON.stringify(data.data.user))
 
       setAuthState({
         isAuthenticated: true,
-        user: data.user,
-        token: data.token,
+        user: data.data.user,
+        token: data.data.token,
         loading: false,
       })
 

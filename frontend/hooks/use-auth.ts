@@ -57,7 +57,7 @@ export function useAuth() {
 
   const login = async (email: string, password: string) => {
     try {
-      const res = await fetch("http://localhost:5000/api/admin/login", {
+      const res = await fetch("/api/admin/login", {
 
         method: "POST",
         headers: { "Content-Type": "application/json" },
