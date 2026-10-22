@@ -7,11 +7,11 @@ const DeviceInfoPanel = ({ macAddress, status }: { macAddress: string; status: s
       <CardTitle className="text-base text-black">Device Information</CardTitle>
     </CardHeader>
     <CardContent>
-      <div className="grid grid-cols-1 border-l border-t border-black text-sm sm:grid-cols-2">
-        <div className="border-b border-r border-black p-3 font-medium">MAC Address</div>
-        <div className="border-b border-r border-black p-3 font-mono text-xs">{macAddress}</div>
-        <div className="border-b border-r border-black p-3 font-medium">Status</div>
-        <div className="border-b border-r border-black p-3">
+      <div className="grid grid-cols-1 text-sm sm:grid-cols-2">
+        <div className="border-b border-black p-3 font-medium">MAC Address</div>
+        <div className="border-b border-black p-3 font-mono text-xs">{macAddress}</div>
+        <div className="border-b border-black p-3 font-medium">Status</div>
+        <div className="border-b border-black p-3">
           <Badge
             variant="outline"
             className={

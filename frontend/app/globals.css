@@ -29,7 +29,7 @@
     --radius: 0.75rem;
 
     /* ✅ Include font vars */
-    --font-sans: '__GeistSans_fb8f2c'; /* Example value, updated at runtime */
+    --font-sans: 'Geist', sans-serif;
     --font-mono: '__GeistMono_f910ec';
   }
 

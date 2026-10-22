@@ -14,8 +14,8 @@ const PackageCard = ({ pkg, isSelected, onSelect }: { pkg: Package; isSelected: 
     <button
       type="button"
       aria-pressed={isSelected}
-      className={`relative min-h-32 border-2 border-black p-4 text-left transition-colors ${
-        isSelected ? "bg-black text-white" : "bg-white text-black hover:bg-neutral-100"
+      className={`relative min-h-32 border-2 border-black p-4 text-left transition-all ${
+        isSelected ? "bg-black text-white shadow-[4px_4px_0_0_#000]" : "bg-white text-black hover:bg-neutral-100 shadow-[4px_4px_0_0_#000] hover:shadow-[6px_6px_0_0_#000] hover:-translate-y-0.5"
       }`}
       onClick={() => onSelect(pkg.value)}
     >

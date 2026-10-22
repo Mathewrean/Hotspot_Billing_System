@@ -1,7 +1,7 @@
 import { Shield, Users, Globe } from "lucide-react"
 
 const TrustIndicators = () => (
-  <div className="grid grid-cols-1 border-l-2 border-t-2 border-black sm:grid-cols-3 mb-8">
+  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
     <div className="grid-cell flex items-center gap-3">
       <Shield className="h-6 w-6" />
       <div>

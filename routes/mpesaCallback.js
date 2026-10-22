@@ -6,7 +6,8 @@ const logger = require("../src/logger");
 const router = express.Router();
 
 router.post("/mpesa/callback", async (req, res) => {
-  logger.info("M-Pesa Callback Received", { body: req.body });
+  const callbackReceivedAt = Date.now();
+  logger.info("M-Pesa Callback Received", { body: req.body, receivedAt: callbackReceivedAt });
 
   const callbackData = req.body?.Body?.stkCallback;
   const checkoutId = callbackData?.CheckoutRequestID;
@@ -229,6 +230,7 @@ router.post("/mpesa/callback", async (req, res) => {
         // Emit WebSocket event for real-time frontend update
         try {
           if (global.io) {
+            const wsEmittedAt = Date.now();
             global.io.emit("payment_completed", {
               checkoutId,
               amount,
@@ -236,6 +238,7 @@ router.post("/mpesa/callback", async (req, res) => {
               macAddress: mac,
               status: "completed"
             });
+            logger.info("WebSocket payment_completed emitted", { checkoutId, callbackReceivedAt, wsEmittedAt, latencyMs: wsEmittedAt - callbackReceivedAt });
           }
         } catch (wsError) {
           logger.error("WebSocket emit failed", { error: wsError.message, checkoutId });

@@ -13,7 +13,7 @@ import { Footer } from "@/components/footer"
 import { PaymentSuccessModal } from "@/components/payment-success-modal"
 import { ToastProvider } from "@/components/toast-provider"
 import { toast } from "sonner"
-import { apiClient, type PaymentRequest } from "@/lib/api"
+import { apiClient, type PaymentRequest, wsClient } from "@/lib/api"
 import { useDynamicTitle } from "@/hooks/use-dynamic-title"
 import TrustIndicators from "@/components/TrustIndicators"
 import PackageCard from "@/components/PackageCard"
@@ -63,24 +63,51 @@ export default function PackagesPage() {
     fetchDeviceInfo()
   }, [router])
 
+  // WebSocket listener for real-time payment completion
+  useEffect(() => {
+    wsClient.connect()
+
+    const handlePaymentCompleted = (event: CustomEvent) => {
+      const { checkoutId, amount: paidAmount, expiresAt } = event.detail
+      setTransactionId(checkoutId)
+      setStatus("completed")
+      const selectedPackage = packages.find((p) => p.value === amount)
+      setPaymentData({
+        transactionId: checkoutId,
+        amount: paidAmount,
+        package: selectedPackage?.label || "WiFi Access",
+        phone: `+254${phone.substring(1)}`,
+        expiresAt,
+        speed: selectedPackage?.speed || "",
+      })
+      toast.dismiss("payment-loading")
+      toast.success("Payment successful!", {
+        description: "You are now connected to the internet",
+        duration: 4000,
+      })
+      setShowSuccessModal(true)
+    }
+
+    window.addEventListener("payment_completed", handlePaymentCompleted as EventListener)
+
+    return () => {
+      window.removeEventListener("payment_completed", handlePaymentCompleted as EventListener)
+      wsClient.disconnect()
+    }
+  }, [])
+
   const fetchDeviceInfo = async () => {
     try {
-      toast.info("Fetching device information...", { duration: 2000 })
-
       const response = await apiClient.getDeviceInfo()
 
       if (response.success && response.data) {
         setMacAddress(response.data.macAddress)
-        toast.success("Device information loaded", { duration: 2000 })
       } else {
-        throw new Error(response.error || "Failed to fetch device info")
+        setMacAddress("UNAVAILABLE")
       }
     } catch (error) {
       console.error("Error fetching device info:", error)
       setMacAddress("UNAVAILABLE")
-      toast.error("Could not retrieve device information", {
-        description: "Please check your network connection and refresh the page",
-      })
     }
   }
 

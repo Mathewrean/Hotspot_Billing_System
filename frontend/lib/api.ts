@@ -523,6 +523,12 @@ export class WebSocketClient {
         window.dispatchEvent(new CustomEvent('support_request_update', { detail: data }))
       })
 
+      // Listen for payment completion events
+      this.socket.on('payment_completed', (data: any) => {
+        console.log('Payment completed event:', data)
+        window.dispatchEvent(new CustomEvent('payment_completed', { detail: data }))
+      })
+
     } catch (error) {
       console.error("Failed to create Socket.IO connection:", error)
     }

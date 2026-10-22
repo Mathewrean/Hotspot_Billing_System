@@ -12,7 +12,7 @@ import { Footer } from "@/components/footer"
 import { PaymentSuccessModal } from "@/components/payment-success-modal"
 import { ToastProvider } from "@/components/toast-provider"
 import { toast } from "sonner"
-import { apiClient, type PaymentRequest } from "@/lib/api"
+import { apiClient, type PaymentRequest, wsClient } from "@/lib/api"
 import { useDynamicTitle } from "@/hooks/use-dynamic-title"
 import TrustIndicators from "@/components/TrustIndicators"
 import PackageCard from "@/components/PackageCard"
@@ -50,6 +50,35 @@ export default function UserPortal() {
 
   useEffect(() => {
     fetchDeviceInfo()
+  }, [])
+
+  // WebSocket listener for real-time payment completion
+  useEffect(() => {
+    wsClient.connect()
+
+    const handlePaymentCompleted = (event: CustomEvent) => {
+      const { checkoutId, amount: paidAmount, expiresAt, macAddress: paidMac } = event.detail
+      setTransactionId(checkoutId)
+      setStatus("completed")
+      setPaymentData({
+        transactionId: checkoutId,
+        amount: paidAmount,
+        package: packages.find((p) => p.value === amount)?.label || "WiFi Access",
+        phone: `+254${phone.substring(1)}`,
+        expiresAt,
+        speed: packages.find((p) => p.value === amount)?.speed || "",
+      })
+      toast.dismiss("payment-loading")
+      toast.success("Payment successful")
+      setShowSuccessModal(true)
+    }
+
+    window.addEventListener("payment_completed", handlePaymentCompleted as EventListener)
+
+    return () => {
+      window.removeEventListener("payment_completed", handlePaymentCompleted as EventListener)
+      wsClient.disconnect()
+    }
   }, [])
 
   const fetchDeviceInfo = async () => {
@@ -278,7 +307,7 @@ const pollPaymentStatus = async (txnId: string) => {
 
             <TrustIndicators />
 
-            <div className="grid grid-cols-1 border-l-2 border-t-2 border-black lg:grid-cols-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Payment Form */}
               <Card className="grid-cell rounded-none shadow-none">
                 <CardHeader className="border-b-2 border-black px-0 pb-5 pt-0">
