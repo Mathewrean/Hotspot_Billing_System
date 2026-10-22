@@ -51,7 +51,7 @@ services:
   - type: web
     name: fastnet-frontend
     runtime: node
-    buildCommand: cd frontend && npm install && npx next build --webpack
+    buildCommand: cd frontend && npm install --include=dev && npx next build --webpack
     startCommand: cd frontend && npm start
     envVars:
       - key: NODE_ENV
