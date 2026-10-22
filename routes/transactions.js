@@ -70,15 +70,16 @@ router.get("/", async (req, res) => {
     ]);
 
     // Transform to match frontend expectations
-    const transformedTransactions = transactions.map(tx => ({
+const transformedTransactions = transactions.map(tx => ({
       id: tx.transactionId,
       phone: tx.phone,
       amount: tx.amount,
-      package: "WiFi Access", // Default package name
+      package: "WiFi Access",
       status: tx.status,
       timestamp: tx.timePurchased.toISOString(),
       mpesaRef: tx.mpesaRef || "",
-      mpesaReceipt: tx.mpesaRef || ""
+      mpesaReceipt: tx.mpesaRef || "",
+      expiresAt: tx.expiresAt ? tx.expiresAt.toISOString() : null
     }));
 
     const totalPages = Math.ceil(total / limitNum);
@@ -140,7 +141,8 @@ router.get("/:transactionId", async (req, res) => {
       status: transaction.status,
       timestamp: transaction.timePurchased.toISOString(),
       mpesaRef: transaction.mpesaRef || "",
-      mpesaReceipt: transaction.mpesaRef || ""
+      mpesaReceipt: transaction.mpesaRef || "",
+      expiresAt: transaction.expiresAt ? transaction.expiresAt.toISOString() : null
     };
 
     res.json({

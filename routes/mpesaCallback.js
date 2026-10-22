@@ -19,6 +19,33 @@ router.post("/mpesa/callback", async (req, res) => {
   // Check if this is a loan repayment transaction
   const isLoanRepayment = checkoutId.includes('LOAN_REPAY');
 
+  // IDEMPOTENCY GUARD: If payment already completed, return success immediately
+  // This prevents duplicate processing when Safaricom retries callbacks.
+  if (resultCode === 0) {
+    try {
+      if (isLoanRepayment) {
+        const existing = await prisma.loanRepayment.findFirst({
+          where: { mpesaRef: checkoutId, status: "completed" }
+        });
+        if (existing) {
+          logger.info("Idempotency: loan repayment already completed", { checkoutId });
+          return res.json({ success: true, message: "Loan repayment already processed" });
+        }
+      } else {
+        const existing = await prisma.payment.findFirst({
+          where: { mpesaRef: checkoutId, status: "completed" }
+        });
+        if (existing) {
+          logger.info("Idempotency: payment already completed", { checkoutId });
+          return res.json({ success: true, message: "Payment already processed" });
+        }
+      }
+    } catch (idemError) {
+      logger.error("Idempotency check failed", { error: idemError.message, checkoutId });
+      // Continue processing - don't block on idempotency check failure
+    }
+  }
+
   if (resultCode !== 0) {
     // Mark failed using parameterized query - payment was not completed
     try {
@@ -193,12 +220,27 @@ router.post("/mpesa/callback", async (req, res) => {
           where: { mpesaRef: checkoutId },
           data: {
             status: "completed",
-            mpesaRef: mpesaRef || checkoutId || null,
             expiresAt: expiresAt
           }
         });
 
         logger.info(`Payment completed`, { checkoutId, amount, expiresAt });
+
+        // Emit WebSocket event for real-time frontend update
+        try {
+          if (global.io) {
+            global.io.emit("payment_completed", {
+              checkoutId,
+              amount,
+              expiresAt,
+              macAddress: mac,
+              status: "completed"
+            });
+          }
+        } catch (wsError) {
+          logger.error("WebSocket emit failed", { error: wsError.message, checkoutId });
+        }
+
         return res.json({ success: true, message: mikrotikResponse.message });
       } else {
         logger.error("MikroTik whitelist failed", { mac, error: mikrotikResponse.message });

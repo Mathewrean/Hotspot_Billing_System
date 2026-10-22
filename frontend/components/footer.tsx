@@ -87,8 +87,8 @@ export function Footer() {
           <div className="grid-cell space-y-4">
             <h3 className="text-sm font-semibold text-black">Contact</h3>
             <ul className="space-y-2 text-sm text-neutral-600">
-              <li>Email: support@fastnet.com</li>
-              <li>Phone: 0798750585</li>
+              <li>Email: madibivemarojoma@gmail.com</li>
+              <li>Phone: 0701618286</li>
               <li>Available 24/7</li>
             </ul>
           </div>

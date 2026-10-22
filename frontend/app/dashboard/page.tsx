@@ -33,6 +33,8 @@ interface Loan {
 export default function DashboardPage() {
   const [loans, setLoans] = useState<Loan[]>([])
   const [loading, setLoading] = useState(true)
+  const [activePayment, setActivePayment] = useState<any>(null)
+  const [timeRemaining, setTimeRemaining] = useState<string>("00:00:00")
   const { user, logout, loading: authLoading } = useUserAuth()
   const { toast } = useToast()
   const router = useRouter()
@@ -52,8 +54,9 @@ export default function DashboardPage() {
       return
     }
 
-    console.log("User found, fetching loan status")
+    console.log("User found, fetching loan status and active payment")
     fetchLoanStatus()
+    fetchActivePayment()
   }, [user, authLoading, router])
 
   const fetchLoanStatus = async () => {
@@ -68,6 +71,62 @@ export default function DashboardPage() {
       setLoading(false)
     }
   }
+
+  const fetchActivePayment = async () => {
+    try {
+      const response = await apiClient.getTransactions({ status: "completed", limit: 10 })
+      if (response.success && response.data?.transactions) {
+        const now = new Date()
+        const active = response.data.transactions.find((tx: any) => {
+          if (!tx.expiresAt) return false
+          return new Date(tx.expiresAt) > now
+        })
+        if (active) {
+          setActivePayment(active)
+          startCountdown(active.expiresAt)
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch active payment:", error)
+    }
+  }
+
+  let countdownInterval: NodeJS.Timeout | null = null
+
+  const startCountdown = (expiresAt: string) => {
+    if (countdownInterval) clearInterval(countdownInterval)
+
+    const updateCountdown = () => {
+      const now = new Date().getTime()
+      const expiry = new Date(expiresAt).getTime()
+      const diff = expiry - now
+
+      if (diff <= 0) {
+        setTimeRemaining("00:00:00")
+        if (countdownInterval) clearInterval(countdownInterval)
+        // Auto-refresh to check if package expired
+        fetchActivePayment()
+        return
+      }
+
+      const hours = Math.floor(diff / (1000 * 60 * 60))
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+
+      setTimeRemaining(
+        `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+      )
+    }
+
+    updateCountdown()
+    countdownInterval = setInterval(updateCountdown, 1000)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (countdownInterval) clearInterval(countdownInterval)
+    }
+  }, [])
 
   const handleLogout = () => {
     logout()
@@ -125,6 +184,56 @@ export default function DashboardPage() {
             Logout
           </Button>
         </div>
+
+        {/* Active Package */}
+        {activePayment && (
+          <Card className="mb-8 border-2 border-green-500 bg-green-50">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-green-900">Active WiFi Package</CardTitle>
+                <CardDescription className="text-green-800">
+                  {activePayment.package} • KES {activePayment.amount} • {activePayment.mpesaRef || activePayment.id}
+                </CardDescription>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-green-600">{timeRemaining}</div>
+                <div className="text-xs text-green-600 uppercase">Time Remaining</div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-600">Status:</span>
+                <Badge variant="default" className="bg-green-100 text-green-700">
+                  Active
+                </Badge>
+              </div>
+              <div className="mt-4 flex justify-between items-center">
+                <span className="text-slate-600">Expires at:</span>
+                <span className="font-medium">{new Date(activePayment.expiresAt).toLocaleString()}</span>
+              </div>
+              {activePayment.macAddress && (
+                <div className="mt-2 flex justify-between items-center text-sm text-slate-500">
+                  <span>MAC Address:</span>
+                  <span className="font-mono">{activePayment.macAddress}</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {!activePayment && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>No Active Package</CardTitle>
+              <CardDescription>You don't have an active WiFi package. Purchase one to get connected.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex justify-center">
+              <Button onClick={() => router.push("/packages")} variant="outline">
+                Browse Packages
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Quick Actions */}
         <Card className="mb-8">

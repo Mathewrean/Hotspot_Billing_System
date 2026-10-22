@@ -24,8 +24,25 @@ router.post("/payments/initiate", async (req, res) => {
     return res.status(400).json({ success: false, error: "Payment amount must be a whole number between 1 and 1000 KES." });
   }
 
-  if (!/^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/.test(macAddress)) {
+  // Accept standard MAC format, or allow placeholder/fallback values
+  // when device detection is unavailable (browser can't determine MAC).
+  const macRegex = /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/;
+  const allowedPlaceholders = ["LOADING...", "UNAVAILABLE", "MAC_NOT_FOUND", "UNKNOWN", "00:00:00:00:00:00"];
+  if (!macRegex.test(macAddress) && !allowedPlaceholders.includes(macAddress.toUpperCase())) {
     return res.status(400).json({ success: false, error: "Invalid MAC address format." });
+  }
+
+  // Normalize placeholder to a deterministic MAC derived from phone
+  let normalizedMac = macAddress;
+  if (!macRegex.test(macAddress)) {
+    // Generate a stable placeholder MAC from the phone number so MikroTik
+    // has something to whitelist even when real hardware detection fails.
+    let hash = 0;
+    for (let i = 0; i < normalizedPhone.length; i++) {
+      hash = (hash * 31 + normalizedPhone.charCodeAt(i)) >>> 0;
+    }
+    const hex = hash.toString(16).padStart(12, "0").slice(0, 12);
+    normalizedMac = `${hex.slice(0,2)}:${hex.slice(2,4)}:${hex.slice(4,6)}:${hex.slice(6,8)}:${hex.slice(8,10)}:${hex.slice(10,12)}`;
   }
 
   logger.info("Payment initiation requested", { phone: normalizedPhone, amount: parsedAmount });
@@ -39,7 +56,7 @@ router.post("/payments/initiate", async (req, res) => {
         phone: normalizedPhone,
         amount: parsedAmount,
         transactionId,
-        macAddress,
+        macAddress: normalizedMac,
         status: "pending"
       }
     });
