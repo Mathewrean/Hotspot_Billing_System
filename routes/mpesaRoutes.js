@@ -1,18 +1,13 @@
 const express = require("express");
-const axios = require("axios");
 const prisma = require("../config/prismaClient");
 const { stkPush } = require("../config/mpesa");
+const logger = require("../src/logger");
 
 const router = express.Router();
 
-// Daraja Mpesa configuration
-const DARAJA_BASE_URL = "http://localhost:3000"; // Daraja Mpesa server
-
 // Initiate payment - aligns with Frontend apiClient.initiatePayment
 router.post("/payments/initiate", async (req, res) => {
-  console.log("Payment initiate request received:", req.body);
-
-  const { phone, amount, macAddress, package: pkg, speed } = req.body || {};
+  const { phone, amount, macAddress } = req.body || {};
 
   if (!phone || !amount || !macAddress) {
     return res.status(400).json({ success: false, error: "Missing required fields" });
@@ -24,6 +19,17 @@ router.post("/payments/initiate", async (req, res) => {
     return res.status(400).json({ success: false, error: "Invalid phone number. Use 2547XXXXXXXX format." });
   }
 
+  const parsedAmount = Number(amount);
+  if (!Number.isSafeInteger(parsedAmount) || parsedAmount < 1 || parsedAmount > 1000) {
+    return res.status(400).json({ success: false, error: "Payment amount must be a whole number between 1 and 1000 KES." });
+  }
+
+  if (!/^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/.test(macAddress)) {
+    return res.status(400).json({ success: false, error: "Invalid MAC address format." });
+  }
+
+  logger.info("Payment initiation requested", { phone: normalizedPhone, amount: parsedAmount });
+
   const transactionId = `TXN_${Date.now()}`;
 
   // Create payment record in database
@@ -31,19 +37,19 @@ router.post("/payments/initiate", async (req, res) => {
     await prisma.payment.create({
       data: {
         phone: normalizedPhone,
-        amount: Number(amount),
+        amount: parsedAmount,
         transactionId,
         macAddress,
         status: "pending"
       }
     });
   } catch (dbError) {
-    console.error("Database error creating payment:", dbError);
+    logger.error("Database error creating payment", { error: dbError.message });
     return res.status(500).json({ success: false, error: "Database error" });
   }
 
   // Use real MPesa STK Push
-  console.log(`Initiating STK Push: Phone: ${normalizedPhone}, Amount: ${amount}`);
+  logger.info("Initiating M-Pesa STK push", { phone: normalizedPhone, amount: parsedAmount, transactionId });
   try {
     const stkResponse = await stkPush(normalizedPhone, amount, transactionId);
     if (!stkResponse) {
@@ -54,7 +60,7 @@ router.post("/payments/initiate", async (req, res) => {
           data: { status: "failed" }
         });
       } catch (dbError) {
-        console.error("Failed to update payment status:", dbError);
+        logger.error("Failed to update payment status", { error: dbError.message, transactionId });
       }
       return res.status(500).json({ success: false, error: "STK Push failed. No response from MPesa API." });
     }
@@ -69,10 +75,10 @@ router.post("/payments/initiate", async (req, res) => {
         });
       }
     } catch (e) {
-      console.error("Failed to persist mpesa_ref:", e);
+      logger.error("Failed to persist M-Pesa checkout reference", { error: e.message, transactionId });
     }
 
-    console.log("Returning success response for transaction:", transactionId);
+    logger.info("M-Pesa STK push accepted", { transactionId });
     return res.json({
       success: true,
       data: {
@@ -84,7 +90,7 @@ router.post("/payments/initiate", async (req, res) => {
       message: "STK Push sent!",
     });
   } catch (stkError) {
-    console.error('STK Push Error:', stkError);
+    logger.error("M-Pesa STK push failed", { error: stkError.message, transactionId });
 
     // Mark payment as failed in database
     try {
@@ -93,7 +99,7 @@ router.post("/payments/initiate", async (req, res) => {
         data: { status: "failed" }
       });
     } catch (dbError) {
-      console.error("Failed to update payment status:", dbError);
+        logger.error("Failed to update payment status", { error: dbError.message, transactionId });
     }
 
     return res.status(500).json({ success: false, error: "STK Push failed. No response from MPesa API." });
@@ -117,7 +123,7 @@ router.get("/payments/status/:transactionId", async (req, res) => {
       expiresAt: payment.expiresAt
     }});
   } catch (error) {
-    console.error("/payments/status error:", error);
+    logger.error("Error fetching payment status", { error: error.message, transactionId: req.params.transactionId });
     return res.status(500).json({ success: false, error: "Failed to fetch payment status" });
   }
 });

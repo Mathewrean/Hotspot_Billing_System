@@ -3,8 +3,11 @@ services:
   - type: web
     name: fastnet-api
     runtime: node
-    buildCommand: npm install && npx prisma generate --schema=./prisma/schema.prisma
-    startCommand: npm start
+    buildCommand: npm install && npm run build && npx prisma generate --schema=./prisma/schema.prisma
+    # The repository's historical migrations were created for SQLite.  `db push`
+    # provisions the PostgreSQL schema declared in prisma/schema.prisma on first
+    # deploy without attempting to run those incompatible files.
+    startCommand: npx prisma db push --schema=./prisma/schema.prisma && npm start
     envVars:
       - key: NODE_ENV
         value: production
@@ -15,52 +18,37 @@ services:
           name: fastnet-db
           property: connectionString
       - key: JWT_SECRET
-        value: change_this_to_a_secure_random_string_here
+        generateValue: true
       - key: ADMIN_USERNAME
-        value: mathew_admin
+        sync: false
       - key: ADMIN_PASSWORD
-        value: change_this_admin_password
+        sync: false
       - key: ADMIN_EMAIL
-        value: mathewrean@gmail.com
+        sync: false
       - key: MPESA_ENABLED
-        value: true
+        value: false
       - key: MPESA_CONSUMER_KEY
-        value: placeholder_consumer_key
+        sync: false
       - key: MPESA_CONSUMER_SECRET
-        value: placeholder_consumer_secret
+        sync: false
       - key: MPESA_SHORTCODE
-        value: 174379
+        sync: false
       - key: MPESA_PASSKEY
-        value: placeholder_passkey
+        sync: false
       - key: MPESA_CALLBACK_URL
-        value: https://fastnet-api.onrender.com/api/mpesa/callback
+        sync: false
       - key: MIKROTIK_ENABLED
         value: false
       - key: MIKROTIK_HOST
-        value: 192.168.88.1
+        sync: false
       - key: MIKROTIK_USER
-        value: admin
+        sync: false
       - key: MIKROTIK_PASSWORD
-        value: LHPMXPV9TZ
+        sync: false
       - key: MIKROTIK_PORT
         value: 8728
       - key: LOAN_WIFI_DURATION_HOURS
         value: 1
-
-  # WiFi Billing Frontend Service
-  - type: web
-    name: fastnet-frontend
-    runtime: node
-    buildCommand: cd frontend && npm install --include=dev && npx next build --webpack
-    startCommand: cd frontend && npm start
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: NEXT_PUBLIC_API_BASE_URL
-        fromService:
-          type: web
-          name: fastnet-api
-          property: host
 
 databases:
   # PostgreSQL Database

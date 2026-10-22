@@ -245,83 +245,11 @@ async function checkOverdueLoans() {
   }
 }
 
-// Bypass mode for testing (allows loan for specific user regardless of eligibility)
-async function createBypassLoan(userId, amount) {
-  try {
-    // Check if user exists
-    const user = await prisma.authUser.findUnique({
-      where: { id: userId }
-    });
-
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    // Check if user has any active loans (bypass should still enforce one loan at a time)
-    const activeLoan = await prisma.loan.findFirst({
-      where: {
-        userId: userId,
-        status: { in: ['active', 'overdue'] }
-      }
-    });
-
-    if (activeLoan) {
-      throw new Error('User already has an active loan');
-    }
-
-    // Calculate due date (7 days from now)
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 7);
-
-    const loan = await prisma.loan.create({
-      data: {
-        userId: userId,
-        amount: amount,
-        dueAt: dueDate,
-        status: 'active'
-      },
-      include: {
-        user: {
-          select: {
-            username: true,
-            phone: true
-          }
-        }
-      }
-    });
-
-    // Log the loan activity
-    await prisma.userActivity.create({
-      data: {
-        userId: userId,
-        action: 'loan_borrowed_bypass',
-        amount: amount
-      }
-    });
-
-    // Emit real-time event
-    if (global.emitLoanEvent) {
-      global.emitLoanEvent('loan_created', {
-        loanId: loan.id,
-        userId: loan.userId,
-        amount: loan.amount,
-        dueAt: loan.dueAt
-      }, userId);
-    }
-
-    return loan;
-  } catch (error) {
-    logger.error('Error creating bypass loan', { error: error.message });
-    throw error;
-  }
-}
-
 module.exports = {
   checkEligibility,
   createLoan,
   repayLoan,
   getUserLoans,
   getAllLoans,
-  checkOverdueLoans,
-  createBypassLoan
+  checkOverdueLoans
 };

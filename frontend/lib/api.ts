@@ -1,5 +1,8 @@
 // API configuration optimized for Node.js/Express backend
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "https://fastnet-api.onrender.com"
+// Keeping this relative by default lets the integrated production server and
+// local development use the same origin.  A separately hosted API can still
+// be configured explicitly with NEXT_PUBLIC_API_BASE_URL.
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || ""
 
 // Daraja Mpesa API base URL
 export const DARAJA_API_BASE_URL = "http://localhost:3000"
@@ -137,15 +140,10 @@ class ApiClient {
   async initiatePayment(paymentData: PaymentRequest): Promise<ApiResponse<PaymentResponse>> {
     // Use the backend API instead of Daraja directly
     try {
-      const response = await fetch(`${API_BASE_URL}/pay`, {
+      const response = await fetch(`${API_BASE_URL}/api/payments/initiate`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          phone: paymentData.phone,
-          amount: paymentData.amount.toString()
-        }).toString(),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(paymentData),
       })
 
       const data = await response.json()
@@ -158,10 +156,10 @@ class ApiClient {
       return {
         success: true,
         data: {
-          transactionId: `TXN_${Date.now()}`,
-          mpesaRef: data.data?.CheckoutRequestID || data.data?.MerchantRequestID || null,
-          status: "pending",
-          expiresAt: null,
+          transactionId: data.data?.transactionId,
+          mpesaRef: data.data?.mpesaRef || null,
+          status: data.data?.status || "pending",
+          expiresAt: data.data?.expiresAt || null,
         },
         message: data.message || "STK Push sent!",
       }

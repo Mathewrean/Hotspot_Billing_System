@@ -9,8 +9,7 @@ const {
   createLoan,
   repayLoan,
   getUserLoans,
-  getAllLoans,
-  createBypassLoan
+  getAllLoans
 } = require("../services/loanService");
 
 const router = express.Router();
@@ -211,6 +210,20 @@ router.post("/repay/initiate/:loanId", verifyToken, repaymentLimiter, async (req
   const { macAddress } = req.body; // Optional MAC address for WiFi access
   const userId = req.user.userId;
 
+  if (!Number.isSafeInteger(Number(loanId)) || Number(loanId) < 1) {
+    return res.status(400).json({ success: false, error: "Invalid loan ID" });
+  }
+
+  if (macAddress) {
+    const macRegex = /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/;
+    if (!macRegex.test(macAddress)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid MAC address format. Must be in format XX:XX:XX:XX:XX:XX or XX-XX-XX-XX-XX-XX"
+      });
+    }
+  }
+
   try {
     // Verify loan belongs to user and get loan details
     const loan = await prisma.loan.findUnique({
@@ -277,16 +290,6 @@ router.post("/repay/initiate/:loanId", verifyToken, repaymentLimiter, async (req
 
     // Store MAC address in user activity for WiFi access after repayment
     if (macAddress) {
-      // Validate MAC address format (enhanced validation)
-      const macRegex = /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/;
-      if (!macRegex.test(macAddress)) {
-        logger.warn(`Invalid MAC address format: ${macAddress}`);
-        return res.status(400).json({
-          success: false,
-          error: "Invalid MAC address format. Must be in format XX:XX:XX:XX:XX:XX or XX-XX-XX-XX-XX-XX"
-        });
-      }
-
       try {
         await prisma.userActivity.create({
           data: {

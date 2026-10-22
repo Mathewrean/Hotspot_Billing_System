@@ -547,7 +547,8 @@ nextApp.prepare().then(() => {
 
   // -------------------- SERVE NEXT.JS FRONTEND --------------------
   // Handle all other routes with Next.js (MUST BE FIRST)
-  app.all("*", (req, res) => {
+  // Express 5 requires a named wildcard.  The brace form also matches `/`.
+  app.all("/{*splat}", (req, res) => {
     return handle(req, res);
   });
 

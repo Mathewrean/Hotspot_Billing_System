@@ -1,10 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  turbopack: {},
-
-  typescript: {
-    ignoreBuildErrors: true, // Skip TypeScript errors during build
-  },
+  outputFileTracingRoot: require('path').join(__dirname, '..'),
+  // TypeScript is checked separately; this avoids a second full type-check in
+  // the deployment build, which otherwise exceeds small-host build limits.
+  typescript: { ignoreBuildErrors: true },
 
   images: {
     unoptimized: true, // Useful for static export
@@ -13,14 +12,6 @@ const nextConfig = {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
     NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
   },
-  webpack(config) {
-    config.optimization.splitChunks = {
-      chunks: "all",
-      maxSize: 25 * 1024 * 1024, // 25 MB
-    };
-    return config;
-  },
-  output: "export", // Static export for Cloudflare Pages
   // Optional: set metadataBase if you use Open Graph/Twitter cards
   // metadataBase: new URL("https://fastnet.com"),
 };
