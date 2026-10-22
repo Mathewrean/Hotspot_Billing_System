@@ -1,6 +1,8 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind v4 uses a single import.  The previous v3 directives caused the
+   stylesheet endpoint to fail at runtime, leaving the page completely
+   unstyled. */
+@config "../tailwind.config.ts";
+@import "tailwindcss";
 
 /* ✅ Base theme tokens (unchanged) */
 @layer base {
@@ -52,6 +54,28 @@
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.3% 94.1%;
   }
+}
+
+@layer components {
+  .site-shell { min-height: 100vh; background: #fff; color: #000; }
+  .site-container { width: 100%; max-width: 72rem; margin: 0 auto; padding-left: 1rem; padding-right: 1rem; }
+  .grid-panel { border: 2px solid #000; background: #fff; }
+  .grid-cell { border: 1px solid #000; background: #fff; padding: 1.25rem; }
+  .section-kicker { color: #525252; font-size: .75rem; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; }
+  .action-primary, .action-secondary { height: 3rem; border: 2px solid #000; border-radius: 0; padding: 0 1.25rem; font-weight: 600; box-shadow: none; transition: background-color .15s, color .15s; }
+  .action-primary { background: #000; color: #fff; }
+  .action-primary:hover { background: #fff; color: #000; }
+  .action-secondary { background: #fff; color: #000; }
+  .action-secondary:hover { background: #000; color: #fff; }
+  .action-primary:disabled, .action-secondary:disabled { border-color: #d4d4d4; background: #e5e5e5; color: #737373; }
+  .field-input { height: 3rem; border: 2px solid #000; border-radius: 0; background: #fff; color: #000; }
+  .field-input:focus { outline: none; box-shadow: none; }
+}
+
+@layer base {
+  html { font-family: var(--font-sans), Arial, sans-serif; }
+  body { background: #fff; color: #000; -webkit-font-smoothing: antialiased; }
+  button, input { font: inherit; }
 }
 
 /* ✅ Apply font families using CSS variables */

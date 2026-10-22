@@ -1,7 +1,6 @@
 "use client"
 
 import { Shield } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import Image from "next/image"
 
@@ -9,13 +8,13 @@ export function Footer() {
   const currentYear = new Date().getFullYear()
 
   return (
-    <footer className="border-t border-slate-200/20 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+    <footer className="border-t-2 border-black bg-white">
+      <div className="site-container py-8">
+        <div className="grid grid-cols-1 border-l-2 border-t-2 border-black md:grid-cols-4">
           {/* Company Info */}
-          <div className="space-y-4">
+          <div className="grid-cell space-y-4">
             <div className="flex items-center space-x-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg overflow-hidden">
+              <div className="flex h-10 w-10 items-center justify-center overflow-hidden border-2 border-black">
                 <Image
                   src="/logo.svg"
                   alt="FastNet"
@@ -23,34 +22,34 @@ export function Footer() {
                   height={40}
                 />
               </div>
-              <span className="text-lg font-bold text-slate-900 dark:text-white">FastNet</span>
+              <span className="text-lg font-bold text-black">FastNet</span>
             </div>
-            <p className="text-sm text-slate-600 dark:text-slate-400 max-w-xs">
+            <p className="max-w-xs text-sm text-neutral-600">
               Providing fast, reliable internet access with seamless M-Pesa integration for easy payments.
             </p>
           </div>
 
           {/* Quick Links */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Quick Links</h3>
-            <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+          <div className="grid-cell space-y-4">
+            <h3 className="text-sm font-semibold text-black">Quick Links</h3>
+            <ul className="space-y-2 text-sm text-neutral-600">
               <li>
-                <Link href="/packages" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+                <Link href="/packages" className="hover:text-black">
                   Packages
                 </Link>
               </li>
               <li>
-                <Link href="/about" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+                <Link href="/about" className="hover:text-black">
                   About Us
                 </Link>
               </li>
               <li>
-                <Link href="/support" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+                <Link href="/support" className="hover:text-black">
                   Support
                 </Link>
               </li>
               <li>
-                <Link href="/admin" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+                <Link href="/admin" className="hover:text-black">
                   Admin
                 </Link>
               </li>
@@ -58,26 +57,26 @@ export function Footer() {
           </div>
 
           {/* Support */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Support</h3>
-            <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+          <div className="grid-cell space-y-4">
+            <h3 className="text-sm font-semibold text-black">Support</h3>
+            <ul className="space-y-2 text-sm text-neutral-600">
               <li>
-                <Link href="/support#help" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+                <Link href="/support#help" className="hover:text-black">
                   Help Center
                 </Link>
               </li>
               <li>
-                <Link href="/support#contact" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+                <Link href="/support#contact" className="hover:text-black">
                   Contact Us
                 </Link>
               </li>
               <li>
-                <Link href="/support#terms" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+                <Link href="/support#terms" className="hover:text-black">
                   Terms of Service
                 </Link>
               </li>
               <li>
-                <Link href="/support#privacy" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+                <Link href="/support#privacy" className="hover:text-black">
                   Privacy Policy
                 </Link>
               </li>
@@ -85,9 +84,9 @@ export function Footer() {
           </div>
 
           {/* Contact */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Contact</h3>
-            <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+          <div className="grid-cell space-y-4">
+            <h3 className="text-sm font-semibold text-black">Contact</h3>
+            <ul className="space-y-2 text-sm text-neutral-600">
               <li>Email: support@fastnet.com</li>
               <li>Phone: 0798750585</li>
               <li>Available 24/7</li>
@@ -95,16 +94,10 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-8 pt-8 border-t border-slate-200/20 dark:border-white/10 flex flex-col sm:flex-row justify-between items-center">
-          <p className="text-sm text-slate-600 dark:text-slate-400">© {currentYear} FastNet. All rights reserved.</p>
-          <div className="flex items-center space-x-4 mt-4 sm:mt-0">
-            <Badge
-              variant="outline"
-              className="text-green-600 dark:text-green-400 border-green-600 dark:border-green-400"
-            >
-              <Shield className="w-3 h-3 mr-1" />
-              Secure Payments
-            </Badge>
+        <div className="flex flex-col items-center justify-between gap-3 border-x-2 border-b-2 border-black p-4 text-sm sm:flex-row">
+          <p className="text-neutral-600">© {currentYear} FastNet. All rights reserved.</p>
+          <div className="flex items-center gap-2 font-medium">
+            <Shield className="h-4 w-4" /> Secure payments
           </div>
         </div>
       </div>

@@ -262,19 +262,15 @@ const pollPaymentStatus = async (txnId: string) => {
   return (
     <>
       <ToastProvider />
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      <div className="site-shell">
         <Header />
-        <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-16">
-          <div className="max-w-4xl mx-auto">
+        <main className="site-container py-8 sm:py-12">
+          <div className="mx-auto max-w-6xl">
             {/* Hero Section */}
-            <div className="text-center mb-12">
-              <h1 className="text-4xl lg:text-6xl font-bold text-slate-900 dark:text-white mb-4">
-                Get Connected
-                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-                  Instantly
-                </span>
-              </h1>
-              <p className="text-xl text-slate-600 dark:text-slate-300 mb-8 max-w-2xl mx-auto">
+            <div className="mb-8 grid-panel p-6 text-center sm:p-10">
+              <p className="section-kicker mb-3">FastNet WiFi</p>
+              <h1 className="text-4xl font-bold tracking-tight text-black sm:text-6xl">Get connected, instantly.</h1>
+              <p className="mx-auto mt-4 max-w-2xl text-base text-neutral-700 sm:text-lg">
                 Choose your internet package and pay securely with M-Pesa. Fast, reliable, and affordable internet
                 access.
               </p>
@@ -282,20 +278,20 @@ const pollPaymentStatus = async (txnId: string) => {
 
             <TrustIndicators />
 
-            <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
+            <div className="grid grid-cols-1 border-l-2 border-t-2 border-black lg:grid-cols-2">
               {/* Payment Form */}
-              <Card className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 backdrop-blur">
-                <CardHeader>
-                  <CardTitle className="text-slate-900 dark:text-white flex items-center">
-                    <Zap className="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" />
+              <Card className="grid-cell rounded-none shadow-none">
+                <CardHeader className="border-b-2 border-black px-0 pb-5 pt-0">
+                  <CardTitle className="flex text-black">
+                    <Zap className="mr-2 h-5 w-5" />
                     Quick Payment
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent className="space-y-6 px-0 pb-0 pt-6">
                   {/* Phone Input */}
                   <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-slate-700 dark:text-slate-300 flex items-center">
-                      <Phone className="w-4 h-4 mr-2" />
+                    <Label htmlFor="phone" className="flex text-black">
+                      <Phone className="mr-2 h-4 w-4" />
                       M-Pesa Number
                     </Label>
                     <Input
@@ -304,18 +300,18 @@ const pollPaymentStatus = async (txnId: string) => {
                       placeholder="0798750585"
                       value={phone}
                       onChange={handlePhoneChange}
-                      className="bg-white/50 dark:bg-slate-700/50 border-slate-300 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:border-blue-500 dark:focus:border-blue-400"
+                      className="field-input"
                       maxLength={10}
                     />
                   </div>
 
                   {/* Package Selection */}
                   <div className="space-y-4">
-                    <Label className="text-slate-700 dark:text-slate-300 flex items-center">
-                      <Package className="w-4 h-4 mr-2" />
+                    <Label className="flex text-black">
+                      <Package className="mr-2 h-4 w-4" />
                       Select Package
                     </Label>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-2">
                       {packages.map((pkg) => (
                         <PackageCard key={pkg.value} pkg={pkg} isSelected={amount === pkg.value} onSelect={setAmount} />
                       ))}
@@ -323,11 +319,11 @@ const pollPaymentStatus = async (txnId: string) => {
                   </div>
 
                   {/* Payment Buttons */}
-                  <div className="flex gap-3">
+                  <div className="grid gap-2 sm:grid-cols-2">
                     <Button
                       onClick={handlePayment}
                       disabled={isLoading || !phone || phone.length !== 10}
-                      className="flex-1 h-12 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold transition-all duration-300 disabled:opacity-50"
+                      className="action-primary w-full"
                     >
                       {isLoading ? (
                         <>
@@ -345,7 +341,7 @@ const pollPaymentStatus = async (txnId: string) => {
                     <Button
                       onClick={handleLoan}
                       disabled={isLoanLoading || isLoading || !phone || phone.length !== 10}
-                      className="flex-1 h-12 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold transition-all duration-300 disabled:opacity-50"
+                      className="action-secondary w-full"
                     >
                       {isLoanLoading ? (
                         <>
@@ -366,7 +362,7 @@ const pollPaymentStatus = async (txnId: string) => {
               </Card>
 
               {/* Info Panel */}
-              <div className="space-y-6">
+              <div className="grid-cell space-y-6">
                 <InfoPanel />
                 <DeviceInfoPanel macAddress={macAddress} status={status} />
               </div>
