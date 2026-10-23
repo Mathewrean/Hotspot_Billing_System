@@ -1,9 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  outputFileTracingRoot: require('path').join(__dirname, '..'),
   // TypeScript is checked separately; this avoids a second full type-check in
   // the deployment build, which otherwise exceeds small-host build limits.
   typescript: { ignoreBuildErrors: true },
+  experimental: {
+    // Next 16's CLI config parser is unreliable in this nested workspace.
+    // Use the installed TypeScript API for build setup instead.
+    useTypeScriptCli: false,
+    webpackBuildWorker: false,
+  },
 
   images: {
     unoptimized: true, // Useful for static export

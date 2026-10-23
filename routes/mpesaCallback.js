@@ -62,6 +62,12 @@ router.post("/mpesa/callback", async (req, res) => {
         });
       }
       logger.warn(`Payment failed for checkout ID: ${checkoutId}`, { resultCode });
+      if (global.io) {
+        global.io.emit("payment_failed", { checkoutId, resultCode, status: "failed" });
+        logger.info("WebSocket payment_failed emitted", { checkoutId, resultCode });
+      } else {
+        logger.warn("Socket.IO unavailable while emitting payment_failed", { checkoutId });
+      }
       return res.json({ success: false, message: "Payment failed or canceled" });
     } catch (error) {
       logger.error("Failed to update payment status", { error: error.message, checkoutId });
@@ -238,7 +244,9 @@ router.post("/mpesa/callback", async (req, res) => {
               macAddress: mac,
               status: "completed"
             });
-            logger.info("WebSocket payment_completed emitted", { checkoutId, callbackReceivedAt, wsEmittedAt, latencyMs: wsEmittedAt - callbackReceivedAt });
+          logger.info("WebSocket payment_completed emitted", { checkoutId, callbackReceivedAt, wsEmittedAt, latencyMs: wsEmittedAt - callbackReceivedAt, connectedClients: global.io.engine?.clientsCount ?? 0 });
+          } else {
+            logger.warn("Socket.IO unavailable while emitting payment_completed", { checkoutId });
           }
         } catch (wsError) {
           logger.error("WebSocket emit failed", { error: wsError.message, checkoutId });

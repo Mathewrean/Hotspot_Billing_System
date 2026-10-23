@@ -28,6 +28,10 @@
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.75rem;
 
+    /* Brand color - sky blue accent */
+    --sky-500: 199 89% 48%;
+    --sky-600: 201 98% 39%;
+
     /* ✅ Include font vars */
     --font-sans: 'Geist', sans-serif;
     --font-mono: '__GeistMono_f910ec';
@@ -53,23 +57,34 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.3% 94.1%;
+
+    /* Brand color - sky blue accent (dark mode) */
+    --sky-500: 199 89% 48%;
+    --sky-600: 201 98% 39%;
   }
 }
 
 @layer components {
-  .site-shell { min-height: 100vh; background: #fff; color: #000; }
+  .site-shell { min-height: 100vh; background: #f8fafc; color: #0f172a; }
   .site-container { width: 100%; max-width: 72rem; margin: 0 auto; padding-left: 1rem; padding-right: 1rem; }
-  .grid-panel { border: 2px solid #000; background: #fff; }
-  .grid-cell { border: 1px solid #000; background: #fff; padding: 1.25rem; }
+  .grid-panel, .grid-cell { background: #fff; border: 1px solid #e2e8f0; border-radius: .5rem; box-shadow: 0 1px 2px rgb(15 23 42 / .06); }
+  .grid-cell { padding: 1.25rem; }
   .section-kicker { color: #525252; font-size: .75rem; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; }
-  .action-primary, .action-secondary { height: 3rem; border: 2px solid #000; border-radius: 0; padding: 0 1.25rem; font-weight: 600; box-shadow: none; transition: background-color .15s, color .15s; }
-  .action-primary { background: #000; color: #fff; }
-  .action-primary:hover { background: #fff; color: #000; }
-  .action-secondary { background: #fff; color: #000; }
-  .action-secondary:hover { background: #000; color: #fff; }
+  .action-primary, .action-secondary { height: 3rem; border-radius: .375rem; padding: 0 1.25rem; font-weight: 600; transition: background-color .15s, box-shadow .15s, transform .15s; }
+  .action-primary { background: #0284c7; color: #fff; box-shadow: 4px 4px 0 0 #0369a1; }
+  .action-primary:hover { background: #0369a1; box-shadow: 6px 6px 0 0 #075985; transform: translateY(-1px); }
+  .action-secondary { background: #fff; color: #0f172a; border: 1px solid #cbd5e1; }
+  .action-secondary:hover { background: #f0f9ff; border-color: #0284c7; color: #0369a1; }
   .action-primary:disabled, .action-secondary:disabled { border-color: #d4d4d4; background: #e5e5e5; color: #737373; }
-  .field-input { height: 3rem; border: 2px solid #000; border-radius: 0; background: #fff; color: #000; }
-  .field-input:focus { outline: none; box-shadow: none; }
+  .field-input { height: 3rem; border: 1px solid #cbd5e1; border-radius: .375rem; background: #fff; color: #0f172a; }
+  .field-input:focus { outline: none; border-color: #0284c7; box-shadow: 0 0 0 3px rgb(14 165 233 / .18); }
+
+  /* Sky blue brand accent */
+  .btn-sky { background: hsl(var(--sky-600)); color: #fff; box-shadow: 4px 4px 0 0 hsl(var(--sky-600)); border: none; border-radius: 0; font-weight: 600; }
+  .btn-sky:hover { background: hsl(var(--sky-500)); box-shadow: 6px 6px 0 0 hsl(var(--sky-500)); transform: translateY(-1px); }
+  .text-sky { color: hsl(var(--sky-600)); }
+  .bg-sky-bg { background-color: hsl(var(--sky-500) / 0.1); }
+  .border-sky { border-color: hsl(var(--sky-600)); }
 }
 
 @layer base {

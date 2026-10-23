@@ -22,7 +22,7 @@ export class WebSocketClient {
       })
 
       this.socket.on('connect', () => {
-        console.log('WebSocket connected')
+        console.info('[payment-flow] WebSocket connected', { socketId: this.socket?.id })
         this.reconnectAttempts = 0
         // Emit connection status event
         window.dispatchEvent(new CustomEvent("websocket_connected", { detail: { connected: true } }))
@@ -44,7 +44,7 @@ export class WebSocketClient {
       })
 
       this.socket.on('connect_error', (error) => {
-        console.error('WebSocket connection error:', error)
+        console.error('[payment-flow] WebSocket connection error:', error)
         this.reconnect()
       })
 
@@ -83,6 +83,16 @@ export class WebSocketClient {
       this.socket.on('support_request_created', (data: any) => {
         console.log('Support request created event:', data)
         window.dispatchEvent(new CustomEvent('support_request_update', { detail: data }))
+      })
+
+      this.socket.on('payment_completed', (data: any) => {
+        console.info('[payment-flow] WebSocket payment_completed received', data)
+        window.dispatchEvent(new CustomEvent('payment_completed', { detail: data }))
+      })
+
+      this.socket.on('payment_failed', (data: any) => {
+        console.warn('[payment-flow] WebSocket payment_failed received', data)
+        window.dispatchEvent(new CustomEvent('payment_failed', { detail: data }))
       })
 
     } catch (error) {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { CheckCircle, Clock, AlertTriangle, Phone, Package, Zap, Shield, Users, Globe, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -47,6 +47,7 @@ export default function UserPortal() {
   const [macAddress, setMacAddress] = useState("Loading...");
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [paymentData, setPaymentData] = useState<any>(null)
+  const activeCheckoutId = useRef<string | null>(null)
 
   useEffect(() => {
     fetchDeviceInfo()
@@ -58,6 +59,8 @@ export default function UserPortal() {
 
     const handlePaymentCompleted = (event: CustomEvent) => {
       const { checkoutId, amount: paidAmount, expiresAt, macAddress: paidMac } = event.detail
+      if (activeCheckoutId.current && checkoutId !== activeCheckoutId.current) return
+      console.info("[payment-flow] Updating home UI to completed", { checkoutId })
       setTransactionId(checkoutId)
       setStatus("completed")
       setPaymentData({
@@ -75,8 +78,18 @@ export default function UserPortal() {
 
     window.addEventListener("payment_completed", handlePaymentCompleted as EventListener)
 
+    const handlePaymentFailed = (event: CustomEvent) => {
+      if (activeCheckoutId.current && event.detail.checkoutId !== activeCheckoutId.current) return
+      console.warn("[payment-flow] Updating home UI to failed", event.detail)
+      setStatus("failed")
+      toast.dismiss("payment-loading")
+      toast.error("Payment was not completed. No charge was made.")
+    }
+    window.addEventListener("payment_failed", handlePaymentFailed as EventListener)
+
     return () => {
       window.removeEventListener("payment_completed", handlePaymentCompleted as EventListener)
+      window.removeEventListener("payment_failed", handlePaymentFailed as EventListener)
       wsClient.disconnect()
     }
   }, [])
@@ -156,6 +169,8 @@ export default function UserPortal() {
       }
 
       const { transactionId, status: paymentStatus, mpesaRef, expiresAt } = response.data
+      activeCheckoutId.current = mpesaRef || transactionId
+      console.info("[payment-flow] STK request accepted; beginning status tracking", { transactionId, checkoutId: activeCheckoutId.current, paymentStatus })
       setStatus(paymentStatus)
 
       if (paymentStatus === "completed") {
@@ -233,13 +248,14 @@ const handleLoan = async () => {
 
 const pollPaymentStatus = async (txnId: string) => {
   let attempts = 0
-  const maxAttempts = 30
+  const maxAttempts = 6 // 60 seconds, then show a definite resolution state
 
   const poll = async () => {
     const selectedPackage = getSelectedPackage()
     if (!selectedPackage) return
 
     try {
+      console.info("[payment-flow] Polling payment status", { transactionId: txnId, attempt: attempts + 1, maxAttempts })
       const response = await apiClient.checkPaymentStatus(txnId)
       if (response.success && response.data?.status === "completed") {
         setPaymentData({
@@ -252,6 +268,7 @@ const pollPaymentStatus = async (txnId: string) => {
           speed: selectedPackage.speed,
         })
         setStatus("completed")
+        console.info("[payment-flow] Poll resolved payment as completed", { transactionId: txnId })
         toast.dismiss("payment-loading")
         toast.success("Payment successful")
         setShowSuccessModal(true)
@@ -263,12 +280,20 @@ const pollPaymentStatus = async (txnId: string) => {
       if (attempts < maxAttempts) {
         setTimeout(poll, 10000)
       } else {
-        throw new Error("Timeout")
+        setStatus("failed")
+        toast.dismiss("payment-loading")
+        toast.error("Payment confirmation timed out", { description: "If you completed the M-Pesa prompt, contact support with your M-Pesa receipt." })
       }
-    } catch {
-      setStatus("failed")
-      toast.dismiss("payment-loading")
-      toast.error("Payment timeout or failed")
+    } catch (error) {
+      console.error("[payment-flow] Payment status poll failed", { transactionId: txnId, error })
+      attempts++
+      if (attempts < maxAttempts) {
+        setTimeout(poll, 10000)
+      } else {
+        setStatus("failed")
+        toast.dismiss("payment-loading")
+        toast.error("Payment status could not be confirmed", { description: "Please try again later or contact support." })
+      }
     }
   }
 
@@ -296,10 +321,10 @@ const pollPaymentStatus = async (txnId: string) => {
         <main className="site-container py-8 sm:py-12">
           <div className="mx-auto max-w-6xl">
             {/* Hero Section */}
-            <div className="mb-8 grid-panel p-6 text-center sm:p-10">
-              <p className="section-kicker mb-3">FastNet WiFi</p>
-              <h1 className="text-4xl font-bold tracking-tight text-black sm:text-6xl">Get connected, instantly.</h1>
-              <p className="mx-auto mt-4 max-w-2xl text-base text-neutral-700 sm:text-lg">
+            <div className="mb-8 rounded-lg bg-sky-50 p-6 text-center shadow-sm dark:bg-sky-950/20 sm:p-10">
+              <p className="section-kicker mb-3 text-sky-600">FastNet WiFi</p>
+              <h1 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-6xl">Get connected, instantly.</h1>
+              <p className="mx-auto mt-4 max-w-2xl text-base text-slate-600 dark:text-slate-300 sm:text-lg">
                 Choose your internet package and pay securely with M-Pesa. Fast, reliable, and affordable internet
                 access.
               </p>
@@ -309,18 +334,18 @@ const pollPaymentStatus = async (txnId: string) => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Payment Form */}
-              <Card className="grid-cell rounded-none shadow-none">
-                <CardHeader className="border-b-2 border-black px-0 pb-5 pt-0">
-                  <CardTitle className="flex text-black">
-                    <Zap className="mr-2 h-5 w-5" />
+              <Card className="border-0 bg-white shadow-sm dark:bg-slate-800">
+                <CardHeader className="px-6 pb-2 pt-6">
+                  <CardTitle className="flex text-slate-900 dark:text-white">
+                    <Zap className="mr-2 h-5 w-5 text-sky-600" />
                     Quick Payment
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6 px-0 pb-0 pt-6">
+                <CardContent className="space-y-6 px-6 pb-6 pt-4">
                   {/* Phone Input */}
                   <div className="space-y-2">
-                    <Label htmlFor="phone" className="flex text-black">
-                      <Phone className="mr-2 h-4 w-4" />
+                    <Label htmlFor="phone" className="flex text-slate-900 dark:text-white">
+                      <Phone className="mr-2 h-4 w-4 text-sky-600" />
                       M-Pesa Number
                     </Label>
                     <Input
@@ -336,8 +361,8 @@ const pollPaymentStatus = async (txnId: string) => {
 
                   {/* Package Selection */}
                   <div className="space-y-4">
-                    <Label className="flex text-black">
-                      <Package className="mr-2 h-4 w-4" />
+                    <Label className="flex text-slate-900 dark:text-white">
+                      <Package className="mr-2 h-4 w-4 text-sky-600" />
                       Select Package
                     </Label>
                     <div className="grid grid-cols-2 gap-2">
@@ -391,7 +416,7 @@ const pollPaymentStatus = async (txnId: string) => {
               </Card>
 
               {/* Info Panel */}
-              <div className="grid-cell space-y-6">
+              <div className="space-y-6">
                 <InfoPanel />
                 <DeviceInfoPanel macAddress={macAddress} status={status} />
               </div>

@@ -14,8 +14,10 @@ const PackageCard = ({ pkg, isSelected, onSelect }: { pkg: Package; isSelected: 
     <button
       type="button"
       aria-pressed={isSelected}
-      className={`relative min-h-32 border-2 border-black p-4 text-left transition-all ${
-        isSelected ? "bg-black text-white shadow-[4px_4px_0_0_#000]" : "bg-white text-black hover:bg-neutral-100 shadow-[4px_4px_0_0_#000] hover:shadow-[6px_6px_0_0_#000] hover:-translate-y-0.5"
+      className={`relative min-h-32 border-2 p-4 text-left transition-all ${
+        isSelected
+          ? "border-sky-600 bg-sky-600 text-white shadow-[4px_4px_0_0_hsl(var(--sky-600))]"
+          : "border-black bg-white text-black shadow-[4px_4px_0_0_#000] hover:border-sky-600 hover:shadow-[6px_6px_0_0_hsl(var(--sky-600))] hover:-translate-y-0.5"
       }`}
       onClick={() => onSelect(pkg.value)}
     >
@@ -25,8 +27,8 @@ const PackageCard = ({ pkg, isSelected, onSelect }: { pkg: Package; isSelected: 
         </div>
       )}
       <div className="text-2xl font-bold">{pkg.price}</div>
-      <div className={`mt-5 text-sm font-medium ${isSelected ? "text-white" : "text-neutral-700"}`}>{pkg.label}</div>
-      <div className={`mt-1 text-xs ${isSelected ? "text-neutral-300" : "text-neutral-500"}`}>{pkg.speed}</div>
+      <div className={`mt-5 text-sm font-medium ${isSelected ? "text-white" : "text-slate-900"}`}>{pkg.label}</div>
+      <div className={`mt-1 text-xs ${isSelected ? "text-sky-100" : "text-slate-600"}`}>{pkg.speed}</div>
     </button>
   )
 }

@@ -53,6 +53,7 @@ export interface Transaction {
   timestamp: string
   mpesaRef: string
   mpesaReceipt?: string
+  expiresAt?: string | null
 }
 
 export interface SystemStats {
@@ -147,6 +148,13 @@ class ApiClient {
       })
 
       const data = await response.json()
+
+      console.info("[payment-flow] STK initiation response received", {
+        httpStatus: response.status,
+        transactionId: data.data?.transactionId,
+        checkoutId: data.data?.mpesaRef,
+        status: data.data?.status,
+      })
 
       if (!response.ok) {
         throw new Error(data.error || "Payment initiation failed")
@@ -439,15 +447,18 @@ export class WebSocketClient {
   private reconnectInterval = 5000
   private userId: number | null = null
   private userPhone: string | null = null
+  private shouldReconnect = false
 
   connect(userId?: number, userPhone?: string) {
     // Clean up existing connection first
     if (this.socket) {
+      this.shouldReconnect = false
       console.log("Cleaning up existing Socket.IO connection")
       this.socket.disconnect()
       this.socket = null
     }
 
+    this.shouldReconnect = true
     this.userId = userId || null
     this.userPhone = userPhone || null
     const wsUrl = API_BASE_URL
@@ -460,7 +471,7 @@ export class WebSocketClient {
       })
 
       this.socket.on('connect', () => {
-        console.log("Socket.IO connected successfully")
+        console.info("[payment-flow] WebSocket connected", { socketId: this.socket?.id })
         this.reconnectAttempts = 0
         // Emit connection status event
         window.dispatchEvent(new CustomEvent("websocket_connected", { detail: { connected: true } }))
@@ -475,15 +486,15 @@ export class WebSocketClient {
       })
 
       this.socket.on('disconnect', () => {
-        console.log("Socket.IO disconnected")
+        console.warn("[payment-flow] WebSocket disconnected")
         // Emit disconnection status event
         window.dispatchEvent(new CustomEvent("websocket_connected", { detail: { connected: false } }))
-        this.reconnect()
+        if (this.shouldReconnect) this.reconnect()
       })
 
       this.socket.on('connect_error', (error) => {
-        console.error('Socket.IO connection error:', error)
-        this.reconnect()
+        console.error('[payment-flow] WebSocket connection error:', error)
+        if (this.shouldReconnect) this.reconnect()
       })
 
       // Listen for loan events
@@ -525,8 +536,13 @@ export class WebSocketClient {
 
       // Listen for payment completion events
       this.socket.on('payment_completed', (data: any) => {
-        console.log('Payment completed event:', data)
+        console.info('[payment-flow] WebSocket payment_completed received', data)
         window.dispatchEvent(new CustomEvent('payment_completed', { detail: data }))
+      })
+
+      this.socket.on('payment_failed', (data: any) => {
+        console.warn('[payment-flow] WebSocket payment_failed received', data)
+        window.dispatchEvent(new CustomEvent('payment_failed', { detail: data }))
       })
 
     } catch (error) {
@@ -535,16 +551,17 @@ export class WebSocketClient {
   }
 
   private reconnect() {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+    if (this.shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++
       setTimeout(() => {
         console.log(`Attempting to reconnect Socket.IO (${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
-        this.connect(this.userId || undefined, this.userPhone || undefined)
+        if (this.shouldReconnect) this.connect(this.userId || undefined, this.userPhone || undefined)
       }, this.reconnectInterval)
     }
   }
 
   disconnect() {
+    this.shouldReconnect = false
     if (this.socket) {
       if (this.userId) {
         this.socket.emit('leave_loan_room', this.userId)

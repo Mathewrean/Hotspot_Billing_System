@@ -180,6 +180,7 @@ async function start() {
   const server = http.createServer(app);
   const io = socketIo(server, { cors: { origin: true, methods: ["GET", "POST"] } });
   global.io = io;
+  logger.info("Socket.IO initialized", { transport: "websocket/polling" });
   global.emitLoanEvent = (event, data, userId = null) => {
     if (userId) io.to(`loan_${userId}`).emit(event, data);
     io.to("admin_loans").emit(event, data);
@@ -189,10 +190,12 @@ async function start() {
   };
 
   io.on("connection", (socket) => {
+    logger.info("Socket.IO client connected", { socketId: socket.id, connectedClients: io.engine.clientsCount });
     socket.on("join_loan_room", (userId) => socket.join(`loan_${userId}`));
     socket.on("leave_loan_room", (userId) => socket.leave(`loan_${userId}`));
     socket.on("join_admin_loans", () => socket.join("admin_loans"));
     socket.on("join_support", (phone) => socket.join(`support_${phone}`));
+    socket.on("disconnect", (reason) => logger.info("Socket.IO client disconnected", { socketId: socket.id, reason }));
   });
 
   server.listen(PORT, "0.0.0.0", () => logger.info(`FastNet listening on port ${PORT}`));

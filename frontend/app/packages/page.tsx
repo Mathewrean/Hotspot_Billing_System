@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { CheckCircle, Clock, AlertTriangle, Phone, Package, Zap, Shield, Users, Globe, Star, CreditCard, Wifi } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -49,6 +49,7 @@ export default function PackagesPage() {
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [paymentData, setPaymentData] = useState<any>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const activeCheckoutId = useRef<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -69,6 +70,8 @@ export default function PackagesPage() {
 
     const handlePaymentCompleted = (event: CustomEvent) => {
       const { checkoutId, amount: paidAmount, expiresAt } = event.detail
+      if (activeCheckoutId.current && checkoutId !== activeCheckoutId.current) return
+      console.info("[payment-flow] Updating packages UI to completed", { checkoutId })
       setTransactionId(checkoutId)
       setStatus("completed")
       const selectedPackage = packages.find((p) => p.value === amount)
@@ -90,8 +93,18 @@ export default function PackagesPage() {
 
     window.addEventListener("payment_completed", handlePaymentCompleted as EventListener)
 
+    const handlePaymentFailed = (event: CustomEvent) => {
+      if (activeCheckoutId.current && event.detail.checkoutId !== activeCheckoutId.current) return
+      console.warn("[payment-flow] Updating packages UI to failed", event.detail)
+      setStatus("failed")
+      toast.dismiss("payment-loading")
+      toast.error("Payment was not completed. No charge was made.")
+    }
+    window.addEventListener("payment_failed", handlePaymentFailed as EventListener)
+
     return () => {
       window.removeEventListener("payment_completed", handlePaymentCompleted as EventListener)
+      window.removeEventListener("payment_failed", handlePaymentFailed as EventListener)
       wsClient.disconnect()
     }
   }, [])
@@ -157,6 +170,8 @@ export default function PackagesPage() {
 
       if (response.success && response.data) {
         const { transactionId: txnId, mpesaRef, status: paymentStatus, expiresAt } = response.data
+        activeCheckoutId.current = mpesaRef || txnId
+        console.info("[payment-flow] STK request accepted; beginning status tracking", { transactionId: txnId, checkoutId: activeCheckoutId.current, paymentStatus })
 
         setTransactionId(txnId)
         setStatus(paymentStatus)
@@ -204,18 +219,19 @@ export default function PackagesPage() {
   }
 
   const pollPaymentStatus = async (txnId: string) => {
-    const maxAttempts = 30 // 5 minutes with 10-second intervals
+    const maxAttempts = 6 // 60 seconds with 10-second intervals
     let attempts = 0
 
     const poll = async () => {
       try {
+        console.info("[payment-flow] Polling payment status", { transactionId: txnId, attempt: attempts + 1, maxAttempts })
         const response = await apiClient.checkPaymentStatus(txnId)
 
         if (response.success && response.data) {
           const { status: paymentStatus, mpesaRef, expiresAt } = response.data
 
           if (paymentStatus === "completed") {
-            const selectedPackage = packages.find((p) => p.value === amount)
+            const selectedPackage = packages.find((p) => p.value === amount) ?? packages[0]
             const successPaymentData = {
               transactionId: txnId,
               amount,
@@ -228,6 +244,7 @@ export default function PackagesPage() {
 
             setPaymentData(successPaymentData)
             setStatus("completed")
+            console.info("[payment-flow] Poll resolved payment as completed", { transactionId: txnId })
 
             toast.dismiss("payment-loading")
             toast.success("Payment successful!", {
@@ -257,7 +274,7 @@ export default function PackagesPage() {
           setStatus("failed")
           toast.dismiss("payment-loading")
           toast.error("Payment timeout", {
-            description: "Payment is taking longer than expected. Please contact support.",
+            description: "No confirmation arrived within 60 seconds. If you paid, contact support with your M-Pesa receipt.",
             duration: 4000,
           })
         }
@@ -267,6 +284,13 @@ export default function PackagesPage() {
         attempts++
         if (attempts < maxAttempts) {
           setTimeout(poll, 10000)
+        } else {
+          setStatus("failed")
+          toast.dismiss("payment-loading")
+          toast.error("Payment status could not be confirmed", {
+            description: "Please try again later or contact support.",
+            duration: 4000,
+          })
         }
       }
     }
@@ -298,35 +322,35 @@ export default function PackagesPage() {
   return (
     <>
       <ToastProvider />
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      <div className="site-shell min-h-screen">
         <Header />
-        <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-16">
-          <div className="max-w-4xl mx-auto">
+        <main className="site-container py-8 lg:py-14">
+          <div className="max-w-6xl mx-auto">
             {/* Hero Section */}
             <div className="text-center mb-12">
-              <div className="mx-auto w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-8">
+              <div className="mx-auto w-16 h-16 rounded-2xl bg-sky-600 shadow-[4px_4px_0_0_#000] flex items-center justify-center mb-6">
                 <Package className="w-10 h-10 text-white" />
               </div>
-              <h1 className="text-4xl lg:text-6xl font-bold text-slate-900 dark:text-white mb-6">
+              <h1 className="text-4xl lg:text-5xl font-bold text-slate-900 mb-4">
                 Choose Your
-                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+                <span className="block text-sky-600">
                   Internet Package
                 </span>
               </h1>
-              <p className="text-xl text-slate-600 dark:text-slate-300 mb-8 max-w-2xl mx-auto">
+              <p className="text-lg text-slate-600 max-w-2xl mx-auto">
                 Select the perfect package for your internet needs. Fast, reliable, and affordable connectivity.
               </p>
             </div>
 
             <TrustIndicators />
 
-            <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
               {/* Package Selection */}
               <div className="space-y-6">
-                <Card className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10">
+                <Card className="border-0 bg-white shadow-sm">
                   <CardHeader>
-                    <CardTitle className="text-slate-900 dark:text-white flex items-center">
-                      <Package className="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" />
+                    <CardTitle className="text-slate-900 flex items-center">
+                      <Package className="w-5 h-5 mr-2 text-sky-600" />
                       Available Packages
                     </CardTitle>
                   </CardHeader>
@@ -340,17 +364,17 @@ export default function PackagesPage() {
                 </Card>
 
                 {/* Payment Form */}
-                <Card className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 backdrop-blur">
+                <Card className="border-0 bg-white shadow-sm">
                   <CardHeader>
-                    <CardTitle className="text-slate-900 dark:text-white flex items-center">
-                      <Zap className="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" />
+                    <CardTitle className="text-slate-900 flex items-center">
+                      <Zap className="w-5 h-5 mr-2 text-sky-600" />
                       Payment Details
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {/* Phone Input */}
                     <div className="space-y-2">
-                      <Label htmlFor="phone" className="text-slate-700 dark:text-slate-300 flex items-center">
+                      <Label htmlFor="phone" className="text-slate-700 flex items-center">
                         <Phone className="w-4 h-4 mr-2" />
                         M-Pesa Number
                       </Label>
@@ -360,7 +384,7 @@ export default function PackagesPage() {
                         placeholder="0798750585"
                         value={phone}
                         onChange={handlePhoneChange}
-                        className="bg-white/50 dark:bg-slate-700/50 border-slate-300 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:border-blue-500 dark:focus:border-blue-400"
+                        className="field-input"
                         maxLength={10}
                       />
                     </div>
@@ -369,7 +393,7 @@ export default function PackagesPage() {
                     <Button
                       onClick={handlePayment}
                       disabled={isLoading || !phone || phone.length !== 10}
-                      className="w-full h-12 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold transition-all duration-300 disabled:opacity-50"
+                      className="action-primary w-full h-12 disabled:opacity-50"
                     >
                       {isLoading ? (
                         <>
@@ -385,8 +409,8 @@ export default function PackagesPage() {
                     </Button>
 
                     {/* Okoa Internet Loan Button */}
-                    <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 text-center">
+                    <div className="pt-4 border-t border-slate-200">
+                      <p className="text-sm text-slate-600 mb-3 text-center">
                         Don't have enough? Try Okoa Internet!
                       </p>
                       <LoanBorrowButton

@@ -1,11 +1,19 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Wifi, Menu, X, User, LogOut } from "lucide-react"
+import { Wifi, Menu, X, User, LogOut, Bell } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AuthModal } from "@/components/AuthModal"
 import { useUserAuth } from "@/hooks/use-user-auth"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
+
+const navLinks = [
+  { href: "/packages", label: "Packages" },
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/about", label: "About" },
+  { href: "/support", label: "Support" },
+]
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -13,6 +21,7 @@ export function Header() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [user, setUser] = useState<any>(null)
   const { logout } = useUserAuth()
+  const pathname = usePathname()
 
   useEffect(() => {
     const token = localStorage.getItem('user_token')
@@ -35,66 +44,57 @@ export function Header() {
     setUser(null)
   }
 
+  const isActive = (href: string) => pathname === href
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b-2 border-black bg-white">
+    <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/90 backdrop-blur">
       <div className="site-container">
-        <div className="flex min-h-16 items-center justify-between">
-          <div className="flex items-center space-x-4">
+        <div className="flex min-h-14 items-center justify-between">
+          <div className="flex items-center space-x-3">
             <Link href="/" className="flex items-center space-x-2">
-              <div className="flex h-10 w-10 items-center justify-center border-2 border-black bg-black">
+              <div className="flex h-9 w-9 items-center justify-center border-2 border-black bg-sky-600">
                 <Wifi className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-black">FastNet</h1>
-                <p className="text-xs text-neutral-600">WiFi billing</p>
+                <h1 className="text-lg font-bold text-black dark:text-white">FastNet</h1>
+                <p className="text-xs text-sky-600 dark:text-sky-400 font-medium">WiFi billing</p>
               </div>
             </Link>
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center divide-x-2 divide-black border-x-2 border-black">
-            {isAuthenticated && (
+          <nav className="hidden md:flex items-center gap-1">
+            {navLinks.map((link) => (
               <Link
-                href="/dashboard"
-                className="px-4 py-2 text-sm font-medium text-black hover:bg-black hover:text-white"
+                key={link.href}
+                href={link.href}
+                className={`px-5 py-2 text-sm font-medium transition-all ${
+                  isActive(link.href)
+                    ? "bg-sky-600 text-white shadow-[4px_4px_0_0_hsl(var(--sky-600))]"
+                    : "text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400"
+                }`}
+                onClick={() => setIsMenuOpen(false)}
               >
-                Dashboard
+                {link.label}
               </Link>
-            )}
-            <Link
-              href="/packages"
-              className="px-4 py-2 text-sm font-medium text-black hover:bg-black hover:text-white"
-            >
-              Packages
-            </Link>
-            <Link
-              href="/about"
-              className="px-4 py-2 text-sm font-medium text-black hover:bg-black hover:text-white"
-            >
-              About
-            </Link>
-            <Link
-              href="/support"
-              className="px-4 py-2 text-sm font-medium text-black hover:bg-black hover:text-white"
-            >
-              Support
-            </Link>
-            {isAuthenticated ? (
-              <div className="flex items-center">
+            ))}
+            {isAuthenticated && (
+              <div className="flex items-center gap-2">
                 <Button
                   onClick={handleLogout}
                   variant="ghost"
                   size="sm"
-                  className="h-auto rounded-none px-4 py-2 text-black hover:bg-black hover:text-white"
+                  className="h-auto rounded-none px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-sky-600 hover:text-white hover:shadow-[4px_4px_0_0_hsl(var(--sky-600))] transition-all"
                 >
                   <LogOut className="w-4 h-4 mr-2" />
                   Logout
                 </Button>
               </div>
-            ) : (
+            )}
+            {!isAuthenticated && (
               <Link
                 href="/login"
-                className="px-4 py-2 text-sm font-semibold text-black hover:bg-black hover:text-white"
+                className="px-5 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400"
               >
                 Login
               </Link>
@@ -102,7 +102,7 @@ export function Header() {
           </nav>
 
           {/* Mobile navigation toggle */}
-          <div className="flex items-center space-x-2 md:hidden">
+          <div className="flex items-center md:hidden">
             <Button
               variant="ghost"
               size="icon"
@@ -114,66 +114,58 @@ export function Header() {
           </div>
         </div>
 
-        {/* Mobile Navigation */}
+        {/* Mobile Navigation - slide out overlay */}
         {isMenuOpen && (
-          <div className="md:hidden border-t-2 border-black py-3">
-            <nav className="grid grid-cols-2 border-l-2 border-t-2 border-black">
-              {isAuthenticated && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)} />
+        )}
+        {isMenuOpen && (
+          <div className="fixed inset-y-0 left-0 z-50 w-full sm:w-72 bg-white dark:bg-slate-800 shadow-2xl transform transition-transform duration-300 translate-x-0 sm:translate-x-0 border-r border-slate-200 dark:border-white/10">
+            <div className="p-6 border-b border-slate-200 dark:border-white/10">
+              <Link href="/" className="flex items-center space-x-2">
+                <div className="flex h-9 w-9 items-center justify-center border-2 border-black bg-sky-600">
+                  <Wifi className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold text-black dark:text-white">FastNet</h1>
+                </div>
+              </Link>
+            </div>
+            <nav className="px-6 space-y-1">
+              {navLinks.map((link) => (
                 <Link
-                  href="/dashboard"
-                  className="border-b-2 border-r-2 border-black p-3 text-sm font-medium text-black hover:bg-black hover:text-white"
+                  key={link.href}
+                  href={link.href}
+                  className={`block px-5 py-3 text-sm font-medium transition-all ${
+                    isActive(link.href)
+                      ? "bg-sky-600 text-white shadow-[4px_4px_0_0_hsl(var(--sky-600))]"
+                      : "text-slate-600 dark:text-slate-300 hover:bg-sky-600/10 dark:hover:bg-sky-600/20 hover:text-sky-600 dark:hover:text-sky-400"
+                  }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  Dashboard
+                  {link.label}
                 </Link>
-              )}
-              <Link
-                href="/packages"
-                className="border-b-2 border-r-2 border-black p-3 text-sm font-medium text-black hover:bg-black hover:text-white"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Packages
-              </Link>
-              <Link
-                href="/about"
-                className="border-b-2 border-r-2 border-black p-3 text-sm font-medium text-black hover:bg-black hover:text-white"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                About
-              </Link>
-              <Link
-                href="/support"
-                className="border-b-2 border-r-2 border-black p-3 text-sm font-medium text-black hover:bg-black hover:text-white"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Support
-              </Link>
-
-              {isAuthenticated ? (
-                <div className="col-span-2 flex flex-col">
+              ))}
+              <div className="pt-6 pb-4 border-t border-slate-200 dark:border-white/10">
+                {isAuthenticated ? (
                   <Button
-                    onClick={() => {
-                      handleLogout()
-                      setIsMenuOpen(false)
-                    }}
+                    onClick={() => { handleLogout(); setIsMenuOpen(false) }}
                     variant="ghost"
                     size="sm"
-                    className="justify-start rounded-none border-b-2 border-r-2 border-black p-3 text-black hover:bg-black hover:text-white"
+                    className="w-full justify-start rounded-none px-5 py-3 text-slate-600 dark:text-slate-300 hover:bg-sky-600 hover:text-white hover:shadow-[4px_4px_0_0_hsl(var(--sky-600))] transition-all"
                   >
                     <LogOut className="w-4 h-4 mr-2" />
                     Logout
                   </Button>
-                </div>
-              ) : (
-                <Link
-                  href="/login"
-                  className="col-span-2 border-b-2 border-r-2 border-black p-3 text-sm font-semibold text-black hover:bg-black hover:text-white"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Login
-                </Link>
-              )}
-
+                ) : (
+                  <Link
+                    href="/login"
+                    className="block px-5 py-3 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Login
+                  </Link>
+                )}
+              </div>
             </nav>
           </div>
         )}
