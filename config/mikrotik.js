@@ -13,7 +13,7 @@ function getClient() {
   try {
     return new RouterOSClient({ host, user, password, port, timeout: 5000 });
   } catch (e) {
-    console.error("Failed to create MikroTik client:", e.message);
+    console.error(`[MIKROTIK-FALLBACK] RouterOSClient failed: ${e.message}. Falling back to dev mode (no router board connected).`);
     return null;
   }
 }
