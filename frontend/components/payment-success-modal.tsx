@@ -69,7 +69,7 @@ export function PaymentSuccessModal({ isOpen, onClose, paymentData }: PaymentSuc
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md p-0 overflow-hidden bg-white dark:bg-slate-900 border-slate-200 dark:border-white/10">
+      <DialogContent className="sm:max-w-md p-0 overflow-hidden bg-white dark:bg-slate-900 border-slate-200 dark:border-white/10 shadow-sm">
         <div className="relative">
           {/* Success Header */}
           <div className="bg-gradient-to-r from-green-500 to-emerald-500 p-6 text-center text-white">

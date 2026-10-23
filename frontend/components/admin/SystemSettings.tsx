@@ -70,7 +70,7 @@ const SystemSettings = () => {
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Network Settings */}
-        <Card className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10">
+        <Card className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 shadow-sm">
           <CardHeader>
             <CardTitle className="text-slate-900 dark:text-white flex items-center">
               <Wifi className="h-5 w-5 mr-2" />
@@ -109,7 +109,7 @@ const SystemSettings = () => {
           </CardContent>
         </Card>
         {/* Payment Settings */}
-        <Card className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10">
+        <Card className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 shadow-sm">
           <CardHeader>
             <CardTitle className="text-slate-900 dark:text-white flex items-center">
               <CreditCard className="h-5 w-5 mr-2" />
@@ -146,7 +146,7 @@ const SystemSettings = () => {
           </CardContent>
         </Card>
         {/* System Control */}
-        <Card className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10">
+        <Card className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 shadow-sm">
           <CardHeader>
             <CardTitle className="text-slate-900 dark:text-white flex items-center">
               <Settings className="h-5 w-5 mr-2" />
@@ -175,7 +175,7 @@ const SystemSettings = () => {
           </CardContent>
         </Card>
         {/* Quick Actions */}
-        <Card className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10">
+        <Card className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 shadow-sm">
           <CardHeader>
             <CardTitle className="text-slate-900 dark:text-white flex items-center">
               <AlertTriangle className="h-5 w-5 mr-2" />

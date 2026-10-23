@@ -22,7 +22,7 @@ const StatsCards = ({ stats }: { stats: SystemStats | null }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
       {statsConfig.map((stat, index) => (
-        <Card key={index} className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10">
+        <Card key={index} className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 shadow-sm">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>

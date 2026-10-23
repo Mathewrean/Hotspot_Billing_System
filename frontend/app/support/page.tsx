@@ -130,7 +130,7 @@ const FAQItem = ({ question, answer }) => {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
-    <Card className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10">
+    <Card className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 shadow-sm">
       <CardContent className="p-0">
         <button
           className="w-full p-4 text-left flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
@@ -378,7 +378,7 @@ export default function SupportPage() {
           {/* User Support Requests - Show for authenticated users */}
           {isAuthenticated && (
             <div className="max-w-4xl mx-auto mb-16">
-              <Card className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10">
+              <Card className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-slate-900 dark:text-white flex items-center justify-between">
                     <span>Your Support Requests</span>
@@ -440,7 +440,7 @@ export default function SupportPage() {
 
           {/* Contact Form - Moved to Top */}
           <div className="max-w-2xl mx-auto mb-16" id="contact">
-            <Card className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10">
+            <Card className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 shadow-sm">
               <CardHeader>
                 <CardTitle className="text-slate-900 dark:text-white text-center">
                   Need Help? Contact Us
@@ -521,7 +521,7 @@ export default function SupportPage() {
             {contactMethods.map((method, index) => (
               <Card
                 key={index}
-                className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 text-center hover:scale-105 transition-transform"
+                className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 shadow-sm text-center hover:scale-105 transition-transform"
               >
                 <CardContent className="p-6">
                   <div

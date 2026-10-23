@@ -180,7 +180,7 @@ const UserManagement = () => {
         </Button>
       </div>
       {/* Users Table */}
-      <Card className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10">
+      <Card className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 shadow-sm">
         <CardHeader>
           <CardTitle className="text-slate-900 dark:text-white">Users ({users.length})</CardTitle>
         </CardHeader>

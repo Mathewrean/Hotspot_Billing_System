@@ -10,7 +10,12 @@ function getClient() {
   const password = process.env.MIKROTIK_PASSWORD;
   const port = Number(process.env.MIKROTIK_PORT || 8728);
   if (!host || !user || !password) return null;
-  return new RouterOSClient({ host, user, password, port, timeout: 5000 });
+  try {
+    return new RouterOSClient({ host, user, password, port, timeout: 5000 });
+  } catch (e) {
+    console.error("Failed to create MikroTik client:", e.message);
+    return null;
+  }
 }
 
 async function whitelistMAC(macAddress, timeLabel) {

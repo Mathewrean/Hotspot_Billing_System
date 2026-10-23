@@ -106,7 +106,7 @@ export function Header() {
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-none border-2 border-black text-black"
+              className="rounded-none border-2 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
               {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
