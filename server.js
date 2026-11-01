@@ -142,6 +142,96 @@ app.get("/network/status", requireAdmin, async (req, res) => {
     : res.status(500).json({ success: false, error: result.error });
 });
 
+// ============================
+// ADMIN DASHBOARD API ROUTES
+// ============================
+
+// Dashboard overview metrics
+app.get("/api/admin/dashboard/stats", requireAdmin, async (req, res) => {
+  try {
+    const [payments, routerStatus, activeDevices] = await Promise.all([
+      prisma.payment.aggregate({
+        _sum: { amount: true },
+        _count: true,
+      }),
+      getStatus(),
+      getActiveDevices(),
+    ]);
+
+    const completedPayments = await prisma.payment.count({
+      where: { status: "completed" },
+    });
+
+    const activeSessions = routerStatus.success ? routerStatus.data.connectedUsers : 0;
+
+    res.json({
+      success: true,
+      data: {
+        totalRevenue: payments._sum.amount || 0,
+        totalVouchers: payments._count,
+        completedPayments,
+        activeSessions,
+        routerOnline: routerStatus.success,
+        routerStatus: routerStatus.success ? routerStatus.data : null,
+        activeDevices: activeDevices.success ? activeDevices.data : [],
+      },
+    });
+  } catch (error) {
+    logger.error("Error fetching admin dashboard stats", { error: error.message });
+    res.status(500).json({ success: false, error: "Failed to fetch dashboard stats" });
+  }
+});
+
+// Active sessions from MikroTik
+app.get("/api/admin/sessions", requireAdmin, async (req, res) => {
+  try {
+    const result = await getActiveDevices();
+    if (!result.success) {
+      return res.status(500).json({ success: false, error: result.error });
+    }
+    res.json({ success: true, data: result.data });
+  } catch (error) {
+    logger.error("Error fetching active sessions", { error: error.message });
+    res.status(500).json({ success: false, error: "Failed to fetch active sessions" });
+  }
+});
+
+// Revoke access / disconnect specific MAC
+app.post("/api/admin/sessions/:mac/disconnect", requireAdmin, async (req, res) => {
+  try {
+    const { mac } = req.params;
+    if (!mac) {
+      return res.status(400).json({ success: false, error: "MAC address is required" });
+    }
+    const result = await disconnectByMac(mac);
+    if (!result.success) {
+      return res.status(500).json({ success: false, error: result.message });
+    }
+    res.json({ success: true, message: result.message });
+  } catch (error) {
+    logger.error("Error disconnecting session", { error: error.message, mac: req.params.mac });
+    res.status(500).json({ success: false, error: "Failed to disconnect session" });
+  }
+});
+
+// Manual device provisioning - whitelist MAC
+app.post("/api/admin/devices/whitelist", requireAdmin, async (req, res) => {
+  try {
+    const { macAddress, durationLabel = "1Hr" } = req.body;
+    if (!macAddress) {
+      return res.status(400).json({ success: false, error: "MAC address is required" });
+    }
+    const result = await whitelistMAC(macAddress, durationLabel);
+    if (!result.success) {
+      return res.status(500).json({ success: false, error: result.message });
+    }
+    res.json({ success: true, message: result.message });
+  } catch (error) {
+    logger.error("Error provisioning device", { error: error.message });
+    res.status(500).json({ success: false, error: "Failed to provision device" });
+  }
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use(["/loans", "/api/loans"], loanRoutes);

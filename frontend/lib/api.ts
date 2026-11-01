@@ -362,6 +362,39 @@ class ApiClient {
     return this.request(`/api/system/logs?${queryParams.toString()}`)
   }
 
+  // ============================
+  // ADMIN DASHBOARD API METHODS
+  // ============================
+
+  async getAdminDashboardStats(): Promise<ApiResponse<{
+    totalRevenue: number
+    totalVouchers: number
+    completedPayments: number
+    activeSessions: number
+    routerOnline: boolean
+    routerStatus: any
+    activeDevices: any[]
+  }>> {
+    return this.request("/api/admin/dashboard/stats")
+  }
+
+  async getActiveSessions(): Promise<ApiResponse<any[]>> {
+    return this.request("/api/admin/sessions")
+  }
+
+  async disconnectSession(macAddress: string): Promise<ApiResponse> {
+    return this.request(`/api/admin/sessions/${encodeURIComponent(macAddress)}/disconnect`, {
+      method: "POST",
+    })
+  }
+
+  async manualWhitelistDevice(macAddress: string, durationLabel: string): Promise<ApiResponse> {
+    return this.request("/api/admin/devices/whitelist", {
+      method: "POST",
+      body: JSON.stringify({ macAddress, durationLabel }),
+    })
+  }
+
   // Network Management APIs
   async getConnectedDevices(): Promise<ApiResponse<any[]>> {
     return this.request("/api/network/devices")

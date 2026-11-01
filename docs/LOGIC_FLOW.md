@@ -218,6 +218,10 @@ Render uses its own environment variable dashboard. The `render.yaml` file defin
 | `GET` | `/api/admin/network/devices` | List active router devices | JWT (admin) |
 | `POST` | `/api/admin/network/disconnect-all` | Disconnect all router users | JWT (admin) |
 | `GET` | `/api/admin/network/status` | Get router status | JWT (admin) |
+| `GET` | `/api/admin/dashboard/stats` | Overview metrics: revenue, sessions, vouchers, router health | JWT (admin) |
+| `GET` | `/api/admin/sessions` | List active MikroTik hotspot sessions | JWT (admin) |
+| `POST` | `/api/admin/sessions/:mac/disconnect` | Revoke access / disconnect specific MAC | JWT (admin) |
+| `POST` | `/api/admin/devices/whitelist` | Manually whitelist a MAC address with package duration | JWT (admin) |
 
 ## 4.5 Loans (`/loans` or `/api/loans`)
 
@@ -472,6 +476,7 @@ Render uses its own environment variable dashboard. The `render.yaml` file defin
 2. Create API user with appropriate permissions
 3. Hotspot must be configured on `hotspot-bridge` interface
 4. IP-binding table must exist: `/ip hotspot ip-binding`
+5. **WiFi SSID must be set to "FASTNET":** `/interface wireless set [find default-name=wlan1] ssid=FASTNET`
 
 ## Code Patches Applied
 
@@ -602,32 +607,105 @@ If `MIKROTIK_ENABLED=false` or router is unreachable, all functions return succe
 
 ---
 
-# 10. Verification Checklist
+# 10. Frontend UI/UX
 
-Before marking any change complete, verify:
+## Theme
 
-- [ ] Backend starts without errors on `node server.js`
-- [ ] MikroTik router reachable: `ping 192.168.88.1`
-- [ ] `getStatus()` returns `success: true` with router connected
-- [ ] `whitelistMAC()` creates binding on router (verify via `/ip hotspot ip-binding print`)
-- [ ] M-Pesa callback URL points to correct environment (tunnel for local, Render URL for deploy)
-- [ ] `POST /api/payments/initiate` creates pending payment record
-- [ ] `POST /api/mpesa/callback` updates payment to `completed` and whitelists MAC
-- [ ] `GET /api/hotspot/check-session?mac=...` returns active session for whitelisted MAC
-- [ ] Frontend builds successfully: `cd frontend && npm run build`
-- [ ] Socket.IO events emit correctly
-- [ ] `docs/LOGIC_FLOW.md` updated to reflect changes
+The application uses a strict clean light theme across all devices:
+- **Background:** Pure white (`#ffffff`)
+- **Text:** Black (`#000000`)
+- **Accent:** Sky blue (`#0284c7` / `--sky-600`)
+- **Dark mode:** Disabled — forced light theme via `theme-provider.tsx` (`forcedTheme="light"`)
+
+This ensures consistent appearance on mobile captive portal users and desktop, eliminating the white-on-phone/dark-on-laptop inconsistency.
+
+## Page Layouts
+
+### Home Page (`/`)
+- Hero section with package selection (1Hr/4Hrs/12Hrs/24Hrs)
+- M-Pesa phone input with Kenyan format validation (`07XXXXXXXX` or `01XXXXXXXX`)
+- Pay with M-Pesa button and Okoa Internet loan button
+- Device info panel showing MAC address and connection status
+- Success modal on payment completion
+- WebSocket listener for real-time `payment_completed` / `payment_failed` events
+- 60-second polling fallback for payment status confirmation
+
+### Dashboard Page (`/dashboard`)
+Requires authentication. Sections in order:
+
+1. **Active Package + Countdown** (top) — Shows current WiFi package, time remaining countdown, expiresAt, amount, and M-Pesa reference
+2. **Notifications** — Real-time payment confirmation notifications, stored in localStorage
+3. **Quick Actions** — Buy Package, Get Support buttons
+4. **Transaction History** — Actual payment transactions (not loans), paginated, with status badges
+
+### Login Page (`/login`)
+- Tabbed interface: Login / Create Account
+- Username + password authentication
+- Registration with phone validation (Kenyan format)
+- JWT token stored in `localStorage` as `user_token`
+
+### Header Navigation
+- Brand: FastNet logo + "WiFi billing" tagline
+- Desktop nav: Packages, Dashboard, Support + Login/Logout
+- Mobile: Hamburger menu with slide-out drawer containing same links
+- Auth state persisted via `localStorage` (`user_token`, `user_data`)
+
+## Admin Pages (Route-Based)
+
+### Admin Dashboard (`/admin/dashboard`)
+Requires admin authentication. Four metric cards:
+1. **Total Revenue** — KES earned from all completed payments
+2. **Active Sessions** — Devices currently online via MikroTik IP bindings
+3. **Total Vouchers** — Lifetime payment count
+4. **Router Status** — Online/offline health indicator
+
+Plus an Active Devices preview table showing MAC, IP, user, and uptime.
+
+### Admin Active Sessions (`/admin/sessions`)
+Lists all active hotspot sessions from MikroTik router:
+- MAC Address, IP Address, User, Uptime
+- **Revoke Access** button per row — disconnects specific MAC via `/api/admin/sessions/:mac/disconnect`
+- Search by MAC or IP
+- Refresh button
+
+### Admin M-Pesa Transaction Ledger (`/admin/transactions`)
+Full audit log of M-Pesa STK push payments:
+- Transaction ID, Phone, Amount (KES), Status badge, M-Pesa Ref, Timestamp
+- Search by phone, transaction ID, or M-Pesa reference
+- Filter by status (All/Completed/Pending/Failed/Refunded)
+- Pagination
+- **Force Whitelist MAC** action for completed payments that failed to callback
+
+### Admin Manual Device Provisioning (`/admin/devices`)
+Manually grant WiFi access to a device:
+- MAC Address input field
+- Package duration dropdown (1Hr/4Hrs/12Hrs/24Hrs)
+- Submit calls `/api/admin/devices/whitelist` to push IP-binding rule to router
+- Use case: cash payments, offline scenarios, callback failures
+
+## Frontend-Backend Communication
+
+- **REST API:** All calls go through `apiClient` in `frontend/lib/api.ts`
+- **Base URL:** Relative by default (`""`), configurable via `NEXT_PUBLIC_API_BASE_URL` env var
+- **WebSocket:** Socket.IO connection for real-time payment/loan/support events
+- **Auth:** JWT Bearer token in `Authorization` header for protected routes
+
+## Payment Flow on Frontend
+
+```
+1. User enters phone, selects package, clicks "Pay with M-Pesa"
+2. Frontend POST /api/payments/initiate → backend creates pending payment + STK Push
+3. Backend returns transactionId, mpesaRef (CheckoutRequestID)
+4. Frontend stores activeCheckoutId, starts WebSocket listener + 60s polling
+5. User enters M-Pesa PIN on phone
+6. Safaricom callback → backend updates payment to completed + whitelists MAC on router
+7. Backend emits WebSocket payment_completed event
+8. Frontend receives event, updates UI to completed, shows success modal
+9. Dashboard (if open) receives same event, updates active package + countdown
+```
 
 ---
 
 # 11. Maintenance Rule
 
-**This document must be updated immediately whenever:**
-- Backend API routes are added, modified, or removed
-- Database schema (`schema.prisma`) is changed
-- MikroTik integration scripts (`config/mikrotik.js`) are modified
-- M-Pesa configuration (`config/mpesa.js`) is changed
-- Frontend pages or API calls are modified
-- Environment variables are added or changed
-
-Update the relevant section of `docs/LOGIC_FLOW.md` to match the codebase state.
+This document must be updated immediately whenever backend API routes, database schemas, MikroTik RouterOS integration scripts, or frontend pages are modified. Keep this file in sync with the codebase at all times.

@@ -42,7 +42,7 @@ export function Header() {
   const isActive = (href: string) => pathname === href
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white">
       <div className="site-container">
         <div className="flex min-h-14 items-center justify-between">
           {/* Brand */}
