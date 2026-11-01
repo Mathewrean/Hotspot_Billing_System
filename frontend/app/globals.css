@@ -1,10 +1,8 @@
-/* Tailwind v4 uses a single import.  The previous v3 directives caused the
-   stylesheet endpoint to fail at runtime, leaving the page completely
-   unstyled. */
+/* Tailwind v4 uses a single import. */
 @config "../tailwind.config.ts";
 @import "tailwindcss";
 
-/* ✅ Base theme tokens (unchanged) */
+/* ✅ Force clean light theme - white background, black text on all devices */
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -32,35 +30,26 @@
     --sky-500: 199 89% 48%;
     --sky-600: 201 98% 39%;
 
-    /* ✅ Include font vars */
     --font-sans: 'Geist', sans-serif;
     --font-mono: '__GeistMono_f910ec';
   }
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 84% 4.9%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 94.1%;
+  /* No dark mode variant - force light theme everywhere */
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
 
-    /* Brand color - sky blue accent (dark mode) */
-    --sky-500: 199 89% 48%;
-    --sky-600: 201 98% 39%;
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  html {
+    font-family: var(--font-sans), Arial, sans-serif;
+  }
+
+  button, input, select, textarea {
+    font: inherit;
   }
 }
 
@@ -87,26 +76,17 @@
   .border-sky { border-color: hsl(var(--sky-600)); }
 }
 
-@layer base {
-  html { font-family: var(--font-sans), Arial, sans-serif; }
-  body { background: #fff; color: #000; -webkit-font-smoothing: antialiased; }
-  button, input { font: inherit; }
+/* ✅ Mobile-responsive typography and layout fixes */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
 }
 
-/* ✅ Apply font families using CSS variables */
+/* Ensure no horizontal overflow on mobile */
 @layer base {
-  html {
-    font-family: var(--font-sans);
-    transition: background-color 0.3s ease;
-  }
-
-  body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
-  }
-
-  * {
-    border-color: hsl(var(--border));
-    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
   }
 }

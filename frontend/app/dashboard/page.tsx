@@ -12,24 +12,18 @@ import { useUserAuth } from "@/hooks/use-user-auth"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { ToastProvider } from "@/components/toast-provider"
-import LoanStatusDashboard from "@/components/LoanStatusDashboard"
-import LoanNotificationCenter from "@/components/LoanNotificationCenter"
-import RealTimeLoanMessages from "@/components/RealTimeLoanMessages"
-import LoanBorrowButton from "@/components/LoanBorrowButton"
-import LoanEligibilityStatus from "@/components/LoanEligibilityStatus"
-import FeedbackHub from "@/components/FeedbackHub"
 import DeviceInfoPanel from "@/components/DeviceInfoPanel"
 import InfoPanel from "@/components/InfoPanel"
 
-interface Loan {
-  id: number
+interface Transaction {
+  id: string
+  phone: string
   amount: number
-  status: "active" | "repaid" | "overdue" | "defaulted"
-  borrowedAt: string
-  dueAt: string
-  repaidAt?: string
-  repaymentAmount?: number
-  interestRate: number
+  status: "completed" | "failed" | "pending" | "refunded"
+  timestamp: string
+  mpesaRef: string
+  mpesaReceipt?: string
+  expiresAt?: string | null
 }
 
 interface Notification {
@@ -42,10 +36,10 @@ interface Notification {
 }
 
 export default function DashboardPage() {
-  const [loans, setLoans] = useState<Loan[]>([])
   const [loading, setLoading] = useState(true)
   const [activePayment, setActivePayment] = useState<any>(null)
   const [timeRemaining, setTimeRemaining] = useState<string>("00:00:00")
+  const [transactions, setTransactions] = useState<Transaction[]>([])
   const [notifications, setNotifications] = useState<Notification[]>([])
   const { user, logout, loading: authLoading } = useUserAuth()
   const { toast } = useToast()
@@ -57,8 +51,8 @@ export default function DashboardPage() {
       router.push("/login")
       return
     }
-    fetchLoanStatus()
     fetchActivePayment()
+    fetchTransactions()
     loadNotifications()
   }, [user, authLoading, router])
 
@@ -68,18 +62,7 @@ export default function DashboardPage() {
     return () => wsClient.disconnect()
   }, [user])
 
-  const fetchLoanStatus = async () => {
-    try {
-      const response = await apiClient.getUserLoans()
-      if (response.success && response.data) {
-        setLoans(response.data)
-      }
-    } catch (error) {
-      console.error("Failed to fetch loan status:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  let countdownInterval: NodeJS.Timeout | null = null
 
   const fetchActivePayment = async () => {
     try {
@@ -97,10 +80,21 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error("Failed to fetch active payment:", error)
+    } finally {
+      setLoading(false)
     }
   }
 
-  let countdownInterval: NodeJS.Timeout | null = null
+  const fetchTransactions = async () => {
+    try {
+      const response = await apiClient.getTransactions({ status: "all", limit: 20 })
+      if (response.success && response.data?.transactions) {
+        setTransactions(response.data.transactions)
+      }
+    } catch (error) {
+      console.error("Failed to fetch transactions:", error)
+    }
+  }
 
   const startCountdown = (expiresAt: string) => {
     if (countdownInterval) clearInterval(countdownInterval)
@@ -118,7 +112,7 @@ export default function DashboardPage() {
       }
 
       const hours = Math.floor(diff / (1000 * 60 * 60))
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / 1000 / 60)
       const seconds = Math.floor((diff % (1000 * 60)) / 1000)
 
       setTimeRemaining(
@@ -158,6 +152,7 @@ export default function DashboardPage() {
           mpesaRef: checkoutId,
         } as any)
         startCountdown(expiresAt)
+        fetchTransactions()
       }
 
       toast({
@@ -201,25 +196,10 @@ export default function DashboardPage() {
     router.push("/login")
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-sky-600"
-      case "repaid":
-        return "bg-green-500"
-      case "overdue":
-        return "bg-red-500"
-      case "defaulted":
-        return "bg-slate-500"
-      default:
-        return "bg-slate-500"
-    }
-  }
-
   // Show loading while auth is being checked
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-900">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
       </div>
     )
@@ -232,15 +212,15 @@ export default function DashboardPage() {
   return (
     <>
       <ToastProvider />
-      <div className="min-h-screen bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+      <div className="min-h-screen bg-white text-slate-900">
         <Header />
         <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-16">
           <div className="max-w-4xl mx-auto">
             {/* Page Header */}
             <div className="flex justify-between items-center mb-8">
               <div>
-                <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
-                <p className="text-slate-600 dark:text-slate-400">
+                <h1 className="text-3xl font-bold text-black">Dashboard</h1>
+                <p className="text-slate-600">
                   Welcome back, {user?.username || 'User'}!
                 </p>
               </div>
@@ -251,49 +231,49 @@ export default function DashboardPage() {
 
             {/* (1) Active Package + Countdown - TOP */}
             {activePayment ? (
-              <Card className="mb-8 rounded-none shadow-sm border-0 bg-sky-50 dark:bg-sky-600/10 border border-sky-200 dark:border-sky-500/30 overflow-hidden">
-                <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-sky-200 dark:border-sky-500/30 bg-sky-600/5 dark:bg-sky-600/20">
+              <Card className="mb-8 rounded-none shadow-sm border-0 bg-white border border-slate-200 overflow-hidden">
+                <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-slate-200 bg-slate-50/50">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded bg-sky-600 flex items-center justify-center shadow-[4px_4px_0_0_hsl(var(--sky-600))]">
+                    <div className="w-10 h-10 rounded bg-sky-600 flex items-center justify-center shadow-[4px_4px_0_0_rgba(2,132,199,0.4)]">
                       <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
                     </div>
                     <div>
-                      <CardTitle className="text-slate-900 dark:text-white text-base font-bold">Active WiFi Package</CardTitle>
-                      <CardDescription className="text-sky-600 dark:text-sky-400 text-sm font-medium">
-                        {activePayment.package} • Kesh {activePayment.amount}
+                      <CardTitle className="text-black text-base font-bold">Active WiFi Package</CardTitle>
+                      <CardDescription className="text-sky-600 text-sm font-medium">
+                        {activePayment.package} • Ksh {activePayment.amount}
                       </CardDescription>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-3xl font-bold text-sky-600 dark:text-sky-400">{timeRemaining}</div>
-                    <div className="text-xs text-sky-600 dark:text-sky-400 uppercase tracking-wider">Time Remaining</div>
+                    <div className="text-3xl font-bold text-sky-600">{timeRemaining}</div>
+                    <div className="text-xs text-sky-600 uppercase tracking-wider">Time Remaining</div>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-4">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="p-3 bg-white/50 dark:bg-white/5 rounded">
-                      <span className="block text-xs text-slate-500 dark:text-slate-400 uppercase">Status</span>
-                      <Badge variant="default" className="bg-sky-100 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-500/30">
+                    <div className="p-3 bg-white/50 rounded">
+                      <span className="block text-xs text-slate-500 uppercase">Status</span>
+                      <Badge variant="default" className="bg-sky-100 text-sky-700 border-sky-200">
                         Active
                       </Badge>
                     </div>
-                    <div className="p-3 bg-white/50 dark:bg-white/5 rounded">
-                      <span className="block text-xs text-slate-500 dark:text-slate-400 uppercase">Expires At</span>
-                      <span className="block font-medium text-slate-900 dark:text-white">
+                    <div className="p-3 bg-white/50 rounded">
+                      <span className="block text-xs text-slate-500 uppercase">Expires At</span>
+                      <span className="block font-medium text-black">
                         {new Date(activePayment.expiresAt).toLocaleString()}
                       </span>
                     </div>
-                    <div className="p-3 bg-white/50 dark:bg-white/5 rounded">
-                      <span className="block text-xs text-slate-500 dark:text-slate-400 uppercase">Amount</span>
-                      <span className="block font-medium text-slate-900 dark:text-white">
-                        Kesh {activePayment.amount}
+                    <div className="p-3 bg-white/50 rounded">
+                      <span className="block text-xs text-slate-500 uppercase">Amount</span>
+                      <span className="block font-medium text-black">
+                        Ksh {activePayment.amount}
                       </span>
                     </div>
-                    <div className="p-3 bg-white/50 dark:bg-white/5 rounded">
-                      <span className="block text-xs text-slate-500 dark:text-slate-400 uppercase">Reference</span>
-                      <span className="block font-mono text-xs font-medium text-slate-900 dark:text-white">
+                    <div className="p-3 bg-white/50 rounded">
+                      <span className="block text-xs text-slate-500 uppercase">Reference</span>
+                      <span className="block font-mono text-xs font-medium text-black">
                         {activePayment.mpesaRef || activePayment.id}
                       </span>
                     </div>
@@ -301,10 +281,10 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             ) : (
-              <Card className="mb-8 rounded-none shadow-sm border-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10">
+              <Card className="mb-8 rounded-none shadow-sm border-0 bg-white border border-slate-200">
                 <CardHeader className="border-0">
-                  <CardTitle className="text-slate-900 dark:text-white text-base font-bold">No Active Package</CardTitle>
-                  <CardDescription className="text-slate-600 dark:text-slate-400">
+                  <CardTitle className="text-black text-base font-bold">No Active Package</CardTitle>
+                  <CardDescription className="text-slate-600">
                     You don't have an active WiFi package. Purchase one to get connected.
                   </CardDescription>
                 </CardHeader>
@@ -319,16 +299,16 @@ export default function DashboardPage() {
               </Card>
             )}
 
-            {/* Notifications Panel */}
-            <Card className="mb-8 rounded-none shadow-sm border-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10">
+            {/* (2) Notifications Panel */}
+            <Card className="mb-8 rounded-none shadow-sm border-0 bg-white border border-slate-200">
               <CardHeader className="border-0 flex justify-between items-center">
-                <CardTitle className="text-slate-900 dark:text-white text-base font-bold">Notifications</CardTitle>
+                <CardTitle className="text-black text-base font-bold">Notifications</CardTitle>
                 {notifications.length > 0 && (
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => saveNotifications([])}
-                    className="text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400"
+                    className="text-slate-500 hover:text-sky-600"
                   >
                     Clear all
                   </Button>
@@ -337,7 +317,7 @@ export default function DashboardPage() {
               <CardContent className="pt-0">
                 {notifications.length === 0 ? (
                   <div className="py-8 text-center">
-                    <p className="text-slate-500 dark:text-slate-400">No notifications yet.</p>
+                    <p className="text-slate-500">No notifications yet.</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -347,23 +327,19 @@ export default function DashboardPage() {
                         onClick={() => markAsRead(n.id)}
                         className={`flex items-center justify-between p-3 rounded cursor-pointer transition-colors ${
                           n.read
-                            ? "bg-white/30 dark:bg-white/5"
-                            : "bg-sky-50 dark:bg-sky-600/10 shadow-sm ring-1 ring-sky-200 dark:ring-sky-500/30"
+                            ? "bg-white/30"
+                            : "bg-sky-50 shadow-sm ring-1 ring-sky-200"
                         }`}
                       >
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <span className={`font-semibold ${
-                              n.type === "payment"
-                                ? "text-sky-700 dark:text-sky-400"
-                                : "text-slate-900 dark:text-white"
-                            }`}>
+                            <span className={`font-semibold ${n.type === "payment" ? "text-sky-700" : "text-black"}`}>
                               {n.title}
                             </span>
-                            <span className="text-xs text-slate-500 dark:text-slate-400">{n.type}</span>
+                            <span className="text-xs text-slate-500">{n.type}</span>
                           </div>
-                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">{n.body}</p>
-                          <span className="text-xs text-slate-400 dark:text-slate-500 mt-1 block">
+                          <p className="text-sm text-slate-600 mt-0.5">{n.body}</p>
+                          <span className="text-xs text-slate-400 mt-1 block">
                             {new Date(n.timestamp).toLocaleString()}
                           </span>
                         </div>
@@ -372,7 +348,7 @@ export default function DashboardPage() {
                             e.stopPropagation()
                             dismissNotification(n.id)
                           }}
-                          className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-sky-600 dark:hover:text-sky-400"
+                          className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-sky-600"
                         >
                           ×
                         </button>
@@ -383,11 +359,11 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            {/* (2) Quick Actions */}
-            <Card className="mb-8 rounded-none shadow-sm border-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10">
+            {/* (3) Quick Actions */}
+            <Card className="mb-8 rounded-none shadow-sm border-0 bg-white border border-slate-200">
               <CardHeader className="border-0">
-                <CardTitle className="text-slate-900 dark:text-white text-base font-bold">Quick Actions</CardTitle>
-                <CardDescription className="text-slate-600 dark:text-slate-400">
+                <CardTitle className="text-black text-base font-bold">Quick Actions</CardTitle>
+                <CardDescription className="text-slate-600">
                   Access your WiFi billing features
                 </CardDescription>
               </CardHeader>
@@ -401,47 +377,10 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            {/* (3) Loans/Okoa Internet - Demoted to secondary section */}
-            <Card className="mb-8 rounded-none shadow-sm border-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10">
-              <CardHeader className="border-0 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10c0 1.605-1.923 2.916-4 3.112V5.413C10.077 5.413 12 4.102 12 2.481zM12 19c2.077 0 4-.794 4-2v-3c0-1.209-1.923-2.196-4-3.112V19zM3.343 12.462C3.192 11.231 3 9.948 3 8.5c0-1.449.192-2.731.343-3.962C5.836 4.976 8.731 4 12 4s6.164.976 8.657 2.538C20.808 9.527 21 10.81 21 12.5c0 1.69-.192 2.973-.343 4.262C18.164 17.024 15.269 18 12 18s-6.164-.976-8.657-2.538C3.192 15.473 3 14.19 3 12.5c0-1.449.192-2.731.343-3.962z" />
-                    </svg>
-                  </div>
-                  <CardTitle className="text-slate-900 dark:text-white text-base font-bold">Okoa Internet Loans</CardTitle>
-                  <Badge variant="secondary" className="text-slate-500 dark:text-slate-400 border-slate-300 dark:border-white/20">
-                    Beta
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-4">
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                  Borrow internet credit and repay later. Similar to Safaricom's Okoa Jahazi.
-                </p>
-                <LoanEligibilityStatus className="mb-4" />
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-                  <LoanNotificationCenter />
-                  <RealTimeLoanMessages />
-                </div>
-                <FeedbackHub className="mt-4" />
-                <div className="pt-4 border-t border-slate-200 dark:border-white/10">
-                  <LoanStatusDashboard className="mb-0" />
-                  {loans.length === 0 && (
-                    <div className="text-center py-4">
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">No active loans</p>
-                      <LoanBorrowButton amount={30} onLoanSuccess={fetchLoanStatus} className="btn-sky shadow-[4px_4px_0_0_hsl(var(--sky-600))]" />
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* (4) Transaction History */}
-            <Card className="mb-8 rounded-none shadow-sm border-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10">
-              <CardHeader className="border-0">
-                <CardTitle className="text-slate-900 dark:text-white text-base font-bold">Transaction History</CardTitle>
+            {/* (4) Transaction History - Actual payments, not loans */}
+            <Card className="mb-8 rounded-none shadow-sm border-0 bg-white border border-slate-200">
+              <CardHeader className="border-0 flex justify-between items-center">
+                <CardTitle className="text-black text-base font-bold">Transaction History</CardTitle>
               </CardHeader>
               <CardContent className="pt-4">
                 {loading ? (
@@ -450,33 +389,36 @@ export default function DashboardPage() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
                       <thead>
-                        <tr className="border-b border-slate-200 dark:border-white/10">
-                          <th className="pb-3 font-medium text-slate-600 dark:text-slate-400">Date</th>
-                          <th className="pb-3 font-medium text-slate-600 dark:text-slate-400">Description</th>
-                          <th className="pb-3 font-medium text-slate-600 dark:text-slate-400">Amount</th>
-                          <th className="pb-3 font-medium text-slate-600 dark:text-slate-400">Status</th>
+                        <tr className="border-b border-slate-200">
+                          <th className="pb-3 font-medium text-slate-600">Date</th>
+                          <th className="pb-3 font-medium text-slate-600">Description</th>
+                          <th className="pb-3 font-medium text-slate-600">Amount</th>
+                          <th className="pb-3 font-medium text-slate-600">Status</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-200 dark:divide-white/10">
-                        {loans.map((loan) => (
-                          <tr key={loan.id} className="hover:bg-slate-50 dark:hover:bg-white/5">
-                            <td className="py-3 text-slate-900 dark:text-white">
-                              {new Date(loan.borrowedAt).toLocaleDateString()}
-                            </td>
-                            <td className="py-3 text-slate-900 dark:text-white">Loan #{loan.id}</td>
-                            <td className="py-3 text-slate-900 dark:text-white font-medium">
-                              Kesh {loan.amount}
-                            </td>
-                            <td className="py-3">
-                              <Badge variant="default" className={getStatusColor(loan.status) + " text-white text-xs px-2 py-1 rounded-none shadow-[2px_2px_0_0_rgba(0,0,0,0.2)]"}>
-                                {loan.status}
-                              </Badge>
-                            </td>
-                          </tr>
-                        ))}
-                        {loans.length === 0 && (
+                      <tbody className="divide-y divide-slate-200">
+                        {transactions.length > 0 ? (
+                          transactions.map((tx) => (
+                            <tr key={tx.id} className="hover:bg-slate-50">
+                              <td className="py-3 text-black">
+                                {new Date(tx.timestamp).toLocaleDateString()}
+                              </td>
+                              <td className="py-3 text-black">
+                                {tx.mpesaRef ? `M-Pesa Payment` : `WiFi Package`}
+                              </td>
+                              <td className="py-3 text-black font-medium">
+                                Ksh {tx.amount}
+                              </td>
+                              <td className="py-3">
+                                <Badge variant="default" className={tx.status === "completed" ? "bg-sky-100 text-sky-700 border-sky-200" : "bg-slate-100 text-slate-700 border-slate-200 text-xs px-2 py-1 rounded-none shadow-[2px_2px_0_0_rgba(0,0,0,0.1)]"}>
+                                  {tx.status}
+                                </Badge>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
                           <tr>
-                            <td colSpan={4} className="py-8 text-center text-slate-500 dark:text-slate-400">
+                            <td colSpan={4} className="py-8 text-center text-slate-500">
                               No transactions yet
                             </td>
                           </tr>

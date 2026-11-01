@@ -20,7 +20,7 @@ export default function RootLayout({
       lang="en"
       className={`${GeistSans.variable} ${GeistMono.variable}`} // Apply font variables as classes
     >
-      <body>{children}</body>
+      <body className="bg-white text-black">{children}</body>
     </html>
   )
 }

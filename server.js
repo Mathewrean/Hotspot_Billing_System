@@ -23,6 +23,7 @@ const mpesaRoutes = require("./routes/mpesaRoutes");
 const mpesaCallback = require("./routes/mpesaCallback");
 const supportRoutes = require("./routes/support");
 const transactionRoutes = require("./routes/transactions");
+const hotspotAuthRoutes = require("./routes/hotspotAuth");
 
 const dev = process.env.NODE_ENV !== "production";
 const nextApp = next({ dev, dir: "./frontend" });
@@ -148,6 +149,7 @@ app.use("/api", mpesaRoutes);
 app.use("/api", mpesaCallback);
 app.use("/api/support", supportRoutes);
 app.use("/api/transactions", transactionRoutes);
+app.use("/api/hotspot", hotspotAuthRoutes);
 
 app.get("/api/device/info", async (req, res) => {
   try {

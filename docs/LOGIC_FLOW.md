@@ -1,169 +1,633 @@
-# FastNet System Logic Flow
+# FastNet System Logic Flow Documentation
 
-## Maintenance Rule
-
-This document must be updated whenever backend routes, database schemas, or MikroTik integration scripts are modified.
+> **Maintenance Rule:** This document must be updated immediately whenever backend API routes, database schemas, MikroTik RouterOS integration scripts, or frontend pages are modified. Keep this file in sync with the codebase at all times.
 
 ---
 
-## 1. System Architecture Overview
+# 1. System Architecture Overview
 
-### Components
+## Components
 
 | Component | Technology | Role |
 |---|---|---|
-| Frontend | Next.js | User interface, captive portal, payment initiation, status polling |
-| Backend | Node.js / Express | API routes, M-Pesa integration, MikroTik integration, WebSocket events |
-| Database | PostgreSQL | Payment records, loan records, user activity logs |
-| Router | MikroTik RB951Ui-2HnD | Hotspot IP-binding bypass rules for WiFi access control |
+| Frontend | Next.js 16 (App Router) | Captive portal UI, payment status polling, user dashboard, admin panel |
+| Backend | Node.js / Express | REST API, M-Pesa Daraja webhook handler, session manager, Socket.IO real-time events |
+| Database | PostgreSQL (Prisma ORM) | Stores users, payments, MAC session bindings, loans, support requests, user activities |
+| Router | MikroTik RB951Ui-2HnD (RouterOS 7) | Hotspot server, DHCP pool, IP-binding engine for WiFi access control |
+| Payment Gateway | Safaricom Daraja API | M-Pesa STK Push initiation and callback delivery |
 
-### Relationship
+## Network Topology
 
-Next.js frontend communicates with Node.js backend via REST API and WebSocket (Socket.IO). Node.js backend persists payment records to PostgreSQL and pushes IP-binding rules to MikroTik router via the RouterOS API. Safaricom Daraja API delivers M-Pesa STK push callbacks to the backend callback endpoint.
+```
+Client Device (WiFi)
+      |
+      v
+MikroTik Router (192.168.88.1)
+  - Hotspot server on `hotspot-bridge`
+  - DHCP pool: 192.168.10.0/24
+  - IP-binding bypass rules for whitelisted MACs
+      |
+      v (captive portal redirect)
+Next.js Frontend (localhost:5000 / fastnet.onrender.com)
+      |
+      v (REST API + WebSocket)
+Node.js Backend (Express)
+      |
+      +-- PostgreSQL (payments, users, loans, support)
+      +-- MikroTik RouterOS API (whitelistMAC, disconnect, status)
+      +-- Safaricom Daraja API (STK Push, callbacks)
+```
 
 ---
 
-## 2. User Authentication & Captive Portal Flow
+# 2. Environment Configuration
 
-1. Device connects to `hotspot-bridge` WiFi network
-2. MikroTik router assigns IP via DHCP
-3. Device attempts HTTP request; MikroTik captive portal intercepts and redirects to login page
-4. User selects package and enters phone number on frontend
-5. Frontend initiates payment via POST `/api/payments/initiate`
-6. Backend creates pending payment record and dispatches M-Pesa STK push
-7. User enters M-Pesa PIN on phone
-8. Safaricom delivers callback to backend `/api/mpesa/callback`
-9. Backend updates payment status, whitelists MAC on MikroTik, emits WebSocket event
-10. Frontend polls payment status or receives WebSocket `payment_completed` event
-11. Device gains WiFi access through MikroTik IP-binding bypass rule
+## `.env` File (Local Development)
+
+| Variable | Example Value | Description |
+|---|---|---|
+| `PORT` | `5000` | Backend server port |
+| `NODE_ENV` | `production` | Node environment |
+| `DATABASE_URL` | `postgresql://wifi_user:secure_password@localhost:5432/wifi_billing` | PostgreSQL connection string |
+| `JWT_SECRET` | `your-secure-random-jwt-secret` | JWT signing secret |
+| `ADMIN_USERNAME` | `mathew_admin` | Primary admin username |
+| `ADMIN_PASSWORD` | `29541227006` | Primary admin password |
+| `ADMIN_EMAIL` | `mathewrean@gmail.com` | Primary admin email |
+| `MPESA_ENABLED` | `true` | Enable M-Pesa integration |
+| `MPESA_CONSUMER_KEY` | `2JlnnkngmmfrrdhxigyZQFGkK5bDBPoQrfesurkJ7KnuBrlZ` | Daraja consumer key |
+| `MPESA_CONSUMER_SECRET` | `yeq1i9buL1zHN5skYE77Oiip4vAxxe8vIiJNbESSN3Keefw056Am3IXl6YGqllAi` | Daraja consumer secret |
+| `MPESA_SHORTCODE` | `174379` | M-Pesa paybill shortcode |
+| `MPESA_PASSKEY` | `bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919` | M-Pesa passkey |
+| `MPESA_CALLBACK_URL` | `https://<tunnel>.trycloudflare.com/api/mpesa/callback` | Public HTTPS URL for Safaricom callbacks |
+| `MIKROTIK_ENABLED` | `true` | Enable router integration |
+| `MIKROTIK_HOST` | `192.168.88.1` | MikroTik router IP |
+| `MIKROTIK_USER` | `admin` | Router API username |
+| `MIKROTIK_PASSWORD` | `29541227006mikrotik` | Router API password |
+| `MIKROTIK_PORT` | `8728` | Router API port |
+| `LOAN_WIFI_DURATION_HOURS` | `1` | WiFi duration granted after loan repayment |
+
+## Render Deployment
+
+Render uses its own environment variable dashboard. The `render.yaml` file defines:
+- `NODE_ENV=production`
+- `PORT=10000`
+- `MPESA_ENABLED=false` (disabled on Render)
+- `MIKROTIK_ENABLED=false` (disabled on Render)
+- `MPESA_CALLBACK_URL` set via Render dashboard to `https://fastnet.onrender.com/api/mpesa/callback`
+
+**Critical:** Local `.env` `MPESA_CALLBACK_URL` must point to a public tunnel (cloudflared/ngrok) to `localhost:5000`, NOT to Render. Pointing local at Render causes split-brain: callbacks go to Render's database, not local.
 
 ---
 
-## 3. Payment & Provisioning Workflow
+# 3. Database Schema (Prisma)
+
+## Models
+
+### `User`
+| Field | Type | Description |
+|---|---|---|
+| `id` | Int | Auto-increment primary key |
+| `phone` | String | Unique phone number |
+| `macAddress` | String | Device MAC address |
+| `status` | String | User status |
+| `currentPackage` | String? | Current active package |
+| `expiresAt` | DateTime? | Package expiry |
+| `totalSpent` | Int | Total amount spent |
+| `sessionsCount` | Int | Number of sessions |
+| `lastSeen` | DateTime? | Last activity timestamp |
+
+### `Payment`
+| Field | Type | Description |
+|---|---|---|
+| `id` | Int | Auto-increment primary key |
+| `phone` | String | Customer phone number |
+| `amount` | Int | Payment amount in KES |
+| `transactionId` | String | Unique transaction ID |
+| `macAddress` | String | Device MAC address |
+| `status` | String | `pending`, `completed`, `failed`, `refunded` |
+| `timePurchased` | DateTime | Purchase timestamp |
+| `mpesaRef` | String? | M-Pesa checkout request ID |
+| `expiresAt` | DateTime? | Access expiry timestamp |
+| `userId` | Int? | Related User |
+| `authUserId` | Int? | Related AuthUser |
+
+### `AuthUser`
+| Field | Type | Description |
+|---|---|---|
+| `id` | Int | Auto-increment primary key |
+| `username` | String | Unique username |
+| `email` | String? | Email address |
+| `password` | String | Hashed password |
+| `phone` | String | Unique phone number |
+| `createdAt` | DateTime | Creation timestamp |
+| `updatedAt` | DateTime | Last update timestamp |
+
+### `SupportRequest`
+| Field | Type | Description |
+|---|---|---|
+| `id` | Int | Auto-increment primary key |
+| `name` | String | Customer name |
+| `phone` | String | Customer phone |
+| `transactionCode` | String | Related M-Pesa transaction code |
+| `message` | String | Support message |
+| `status` | String | `pending`, `in_progress`, `resolved`, `closed` |
+
+### `UserActivity`
+| Field | Type | Description |
+|---|---|---|
+| `id` | Int | Auto-increment primary key |
+| `userId` | Int | Related AuthUser |
+| `action` | String | Action type (`purchase`, `login`, `loan_repay_initiated`, etc.) |
+| `amount` | Int? | Amount for purchase actions |
+| `package` | String? | Package name |
+| `macAddress` | String? | Device MAC address |
+| `createdAt` | DateTime | Activity timestamp |
+
+### `Loan`
+| Field | Type | Description |
+|---|---|---|
+| `id` | Int | Auto-increment primary key |
+| `userId` | Int | Related AuthUser |
+| `amount` | Int | Loan amount in KES |
+| `status` | String | `active`, `repaid`, `overdue`, `defaulted` |
+| `borrowedAt` | DateTime | Loan borrow timestamp |
+| `dueAt` | DateTime | Repayment due date |
+| `repaidAt` | DateTime? | Repayment timestamp |
+| `repaymentAmount` | Int? | Actual amount repaid |
+| `interestRate` | Float | Interest rate (default 0.1 = 10%) |
+
+### `LoanRepayment`
+| Field | Type | Description |
+|---|---|---|
+| `id` | Int | Auto-increment primary key |
+| `loanId` | Int | Related Loan |
+| `transactionId` | String | Unique transaction ID |
+| `amount` | Int | Repayment amount |
+| `status` | String | `pending`, `completed`, `failed` |
+| `mpesaRef` | String? | M-Pesa checkout request ID |
+
+### `Admin`
+| Field | Type | Description |
+|---|---|---|
+| `id` | Int | Auto-increment primary key |
+| `email` | String | Unique admin email |
+| `password` | String | Admin password |
+| `role` | String | Role (default `admin`) |
+
+---
+
+# 4. API Endpoints Reference
+
+## 4.1 Authentication (`/api/auth`)
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| `POST` | `/api/auth/register` | Register new user account | None |
+| `POST` | `/api/auth/login` | User login, returns JWT | None |
+| `GET` | `/api/auth/profile` | Get current user profile | JWT (user) |
+
+## 4.2 Payments & M-Pesa (`/api`)
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| `POST` | `/api/payments/initiate` | Initiate M-Pesa STK Push, create pending payment | None |
+| `GET` | `/api/payments/status/:transactionId` | Check payment status | None |
+| `POST` | `/api/mpesa/callback` | Safaricom callback webhook | None |
+| `GET` | `/api/transactions` | List transactions with filters/pagination | None |
+| `GET` | `/api/transactions/:transactionId` | Get single transaction | None |
+| `POST` | `/api/transactions/:transactionId/refund` | Refund a completed transaction | None |
+| `GET` | `/api/transactions/:transactionId/receipt` | Download receipt (placeholder) | None |
+
+## 4.3 MAC-Bound Session / Hotspot Auth (`/api/hotspot`)
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| `GET` | `/api/hotspot/check-session` | Check if MAC has active unexpired session, re-apply whitelist | None |
+
+## 4.4 Admin (`/api/admin`)
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| `POST` | `/api/admin/login` | Admin login (via .env credentials) | None |
+| `GET` | `/api/admin/payments` | List all payments | JWT (admin) |
+| `GET` | `/api/admin/summary` | Dashboard summary stats | JWT (admin) |
+| `GET` | `/api/admin/users` | List users with pagination | JWT (admin) |
+| `POST` | `/api/admin/users/:id/disconnect` | Disconnect user from router | JWT (admin) |
+| `GET` | `/api/admin/transactions` | List transactions | JWT (admin) |
+| `POST` | `/api/admin/transactions/:id/refund` | Refund transaction (not implemented) | JWT (admin) |
+| `GET` | `/api/admin/network/devices` | List active router devices | JWT (admin) |
+| `POST` | `/api/admin/network/disconnect-all` | Disconnect all router users | JWT (admin) |
+| `GET` | `/api/admin/network/status` | Get router status | JWT (admin) |
+
+## 4.5 Loans (`/loans` or `/api/loans`)
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| `GET` | `/loans/eligibility` | Check loan eligibility | JWT (user) |
+| `POST` | `/loans/request` | Request a loan | JWT (user) |
+| `POST` | `/loans/repay/initiate/:loanId` | Initiate M-Pesa repayment | JWT (user) |
+| `GET` | `/loans/repay/status/:transactionId` | Check repayment status | JWT (user) |
+| `GET` | `/loans/status` | Get user's loans | JWT (user) |
+| `GET` | `/loans/admin/all` | Get all loans (admin) | JWT (admin) |
+| `PUT` | `/loans/admin/:loanId/status` | Update loan status | JWT (admin) |
+
+## 4.6 Support (`/api/support`)
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| `POST` | `/api/support/submit` | Submit support request | None |
+| `GET` | `/api/support/requests` | List support requests | None |
+| `PUT` | `/api/support/requests/:id/status` | Update support request status | None |
+| `GET` | `/api/support/user/requests` | Get user's support requests | None |
+| `GET` | `/api/support/requests/:id` | Get single support request | None |
+
+## 4.7 Device Info
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| `GET` | `/api/device/info` | Get device MAC by IP (via MikroTik or ARP) | None |
+| `GET` | `/device/info` | Legacy device MAC lookup (via `arp` command) | None |
+
+## 4.8 Legacy / Admin Aliases
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| `GET` | `/admin/payments` | Legacy payments list | JWT (admin) |
+| `GET` | `/admin/summary` | Legacy summary | JWT (admin) |
+| `GET` | `/api/users` | Legacy users list | JWT (admin) |
+| `POST` | `/api/users/:id/disconnect` | Legacy disconnect user | JWT (admin) |
+| `GET` | `/network/devices` | Legacy network devices | JWT (admin) |
+| `POST` | `/network/disconnect-all` | Legacy disconnect all | JWT (admin) |
+| `GET` | `/network/status` | Legacy network status | JWT (admin) |
+
+---
+
+# 5. Core Logic Flows
+
+## 5.1 MAC-Bound Login & Auto-Bypass Flow
+
+**Purpose:** Allow returning devices with active, unexpired sessions to regain WiFi access automatically without re-payment.
+
+### Step-by-Step
+
+1. **Captive Portal Interception:** Device connects to `hotspot-bridge` WiFi. MikroTik intercepts HTTP and redirects to frontend login page with query params: `?mac=00:00:5E:B8:22:8A&ip=192.168.10.5`
+
+2. **Frontend Captures MAC:** Frontend reads `mac` parameter from URL.
+
+3. **Session Verification:** Frontend calls `GET /api/hotspot/check-session?mac=00:00:5E:B8:22:8A`.
+
+4. **Backend Query:** Backend searches `Payment` table for:
+   - `macAddress` matches
+   - `status = 'completed'`
+   - `expiresAt > NOW()`
+   - Ordered by `createdAt DESC` (latest first)
+
+5. **Auto-Bypass (if active session found):**
+   - Backend determines `timeLabel` from payment amount (30=24Hrs, 20=12Hrs, 15=4Hrs, default=1Hr)
+   - Backend calls `whitelistMAC(mac, timeLabel)` to re-apply MikroTik IP-binding bypass rule
+   - Returns `{ authenticated: true, expiresAt, ... }`
+
+6. **Payment Required (if no active session):**
+   - Returns `{ authenticated: false, message: "No active session found. Payment required." }`
+   - Frontend shows payment form
+
+7. **Internet Access:** Device traffic bypasses MikroTik hotspot via IP-binding rule.
+
+### Endpoint: `GET /api/hotspot/check-session`
+
+**Query params:** `mac` (required)
+
+**Response (active session):**
+```json
+{
+  "success": true,
+  "authenticated": true,
+  "message": "Active session found. Device whitelisted.",
+  "expiresAt": "2026-11-02T08:00:00.000Z",
+  "amount": 30,
+  "transactionId": "TXN_1234567890",
+  "mpesaRef": "CHECKOUT_REQUEST_ID",
+  "mikrotik": { "success": true, "message": "Whitelisted 00:00:5E:B8:22:8A for 24Hrs" }
+}
+```
+
+**Response (no active session):**
+```json
+{
+  "success": true,
+  "authenticated": false,
+  "message": "No active session found. Payment required."
+}
+```
+
+---
+
+## 5.2 Payment & Provisioning Flow (WiFi Purchase)
 
 ### Step-by-Step Sequence
 
 ```
-Phone number entry
+1. User enters phone number, amount, MAC address on frontend
       |
       v
-STK Push initiation (POST /api/payments/initiate)
+2. Frontend POST /api/payments/initiate { phone, amount, macAddress }
       |
       v
-Backend validates phone, amount, MAC address
+3. Backend validates:
+   - Phone matches 2547XXXXXXXX
+   - Amount is whole number 1-1000 KES
+   - MAC matches format or is allowed placeholder
       |
       v
-Pending payment record created in PostgreSQL (status: pending)
+4. Backend creates Payment record: status=pending, macAddress, phone, amount, transactionId
       |
       v
-OAuth access token obtained from Safaricom Daraja API
+5. Backend calls stkPush(phone, amount, transactionId) from config/mpesa.js
       |
       v
-STK Push dispatched to user phone
+6. Daraja OAuth: getAccessToken() via client credentials grant
       |
       v
-User enters M-Pesa PIN
+7. STK Push dispatched to user's phone
       |
       v
-Safaricom delivers callback (POST /api/mpesa/callback)
+8. User enters M-Pesa PIN
       |
       v
-ResultCode === 0?
+9. Safaricom delivers callback POST /api/mpesa/callback
       |
-      +-- No: Mark payment failed/cancelled in database
+      v
+10. ResultCode === 0?
       |
-      +-- Yes: Idempotency check (skip if already completed)
-               |
-               v
-               Extract MAC address and amount from payment record
-               |
-               v
-               Determine timeLabel from amount (30=24Hrs, 20=12Hrs, 15=4Hrs, default=1Hr)
-               |
-               v
-               Invoke whitelistMAC(macAddress, timeLabel)
-               |
-               v
-               MikroTik: /ip/hotspot/ip-binding/add mac-address=<MAC> type=bypassed comment=FastNet <timeLabel>
-               |
-               v
-               Update payment status to completed, set expiresAt
-               |
-               v
-               Emit WebSocket payment_completed event
-               |
-               v
-               Return success response to Safaricom
+      +-- No: Mark payment failed in database, emit payment_failed WebSocket
+      |
+      +-- Yes:
+          |
+          v
+      11. Idempotency check: skip if already completed
+          |
+          v
+      12. Extract Amount and MpesaReceiptNumber from callback metadata
+          |
+          v
+      13. Find payment by mpesaRef (CheckoutRequestID)
+          |
+          v
+      14. Determine timeLabel from amount:
+          30 KES = 24Hrs, 20 KES = 12Hrs, 15 KES = 4Hrs, default = 1Hr
+          |
+          v
+      15. Call whitelistMAC(macAddress, timeLabel) from config/mikrotik.js
+          |
+          v
+      16. MikroTik: /ip/hotspot/ip-binding/add mac-address=<MAC> type=bypassed comment=FastNet <timeLabel>
+          |
+          v
+      17. On success: update payment to completed, set expiresAt
+          |
+          v
+      18. Emit WebSocket payment_completed event
+          |
+          v
+      19. Return success to Safaricom
 ```
 
-### Route: POST /api/payments/initiate
+### Endpoint: `POST /api/payments/initiate`
 
-**Request body:** `{ phone, amount, macAddress }`
+**Request body:**
+```json
+{ "phone": "254712345678", "amount": 30, "macAddress": "00:00:5E:B8:22:8A" }
+```
 
-**Validation:**
-- Phone must match `2547XXXXXXXX` format
-- Amount must be whole number between 1 and 1000 KES
-- MAC address must match standard format or be an allowed placeholder
+**Placeholder MAC handling:** If MAC is `LOADING...`, `UNAVAILABLE`, `MAC_NOT_FOUND`, `UNKNOWN`, or `00:00:00:00:00:00`, a deterministic MAC is derived from the phone number hash.
 
-**Placeholder MAC handling:** If MAC is a placeholder (`LOADING...`, `UNAVAILABLE`, `MAC_NOT_FOUND`, `UNKNOWN`, `00:00:00:00:00:00`), a deterministic MAC is derived from the phone number hash.
-
-**Database:** Creates `payment` record with `status: pending`, `macAddress`, `phone`, `amount`, `transactionId`.
-
-**STK Push:** Calls `stkPush(phone, amount, transactionId)` from `config/mpesa.js`. Persists `CheckoutRequestID` as `mpesaRef` for callback correlation.
-
-### Route: POST /api/mpesa/callback
-
-**Idempotency guard:** If `ResultCode === 0` and payment already `completed`, returns success immediately to prevent duplicate processing on Safaricom retry.
-
-**Failure handling (`ResultCode !== 0`):** Marks payment as `failed` in database, emits `payment_failed` WebSocket event.
-
-**Success handling (`ResultCode === 0`):**
-1. Extract `Amount` and `MpesaReceiptNumber` from callback metadata
-2. Find payment by `mpesaRef` (CheckoutRequestID)
-3. Determine `timeLabel` from amount mapping
-4. Call `whitelistMAC(macAddress, timeLabel)` to push IP-binding rule to MikroTik
-5. On whitelist success: update payment to `completed`, set `expiresAt`, emit `payment_completed` WebSocket
-6. On whitelist failure: return 500 error
-
-### Module: config/mpesa.js
-
-- `getAccessToken()`: OAuth client credentials grant to Daraja API
-- `stkPush(phone, amount, transactionId)`: Builds STK push payload with timestamp, password, CallBackURL from env; posts to `/mpesa/stkpush/v1/processrequest`
-
-### Module: config/mikrotik.js
-
-- `getClient()`: Returns `RouterOSAPI` instance using `MIKROTIK_HOST`, `MIKROTIK_USER`, `MIKROTIK_PASSWORD`, `MIKROTIK_PORT` env vars; returns null if disabled or missing credentials (dev mode fallback)
-- `whitelistMAC(macAddress, timeLabel)`: Connects to router, adds `/ip/hotspot/ip-binding/add` rule with `type=bypassed`, closes connection
-- `disconnectByMac(macAddress)`: Removes active hotspot session by MAC address
-- `disconnectAllUsers()`: Removes all active hotspot sessions
-- `getActiveDevices()`: Returns list of active hotspot sessions with MAC, IP, user, uptime
-- `getStatus()`: Returns router status and connected user count
-- `getDeviceInfoByIP(ipAddress)`: Returns device info for a given IP from active sessions
-
-**Patches applied:**
-- `Channel.processPacket` patched to skip MikroTik `!empty` replies (prevents `UNKNOWNREPLY` crash)
-- `safeWrite()` wrapper catches `UNKNOWNREPLY` and returns `[]`
-- All `client.write()` calls use `safeWrite()` with array-style parameters (`=key=value`)
-
-### Environment Variables
-
-| Variable | Description | Local Dev | Render |
-|---|---|---|---|
-| MPESA_CALLBACK_URL | Public HTTPS URL for Safaricom callbacks | cloudflared/ngrok tunnel to localhost:5000 | https://fastnet.onrender.com/api/mpesa/callback |
-| MIKROTIK_ENABLED | Enable router integration | true | false |
-| MIKROTIK_HOST | Router IP address | 192.168.88.1 | 192.168.88.1 |
-| MIKROTIK_USER | Router API username | admin | admin |
-| MIKROTIK_PASSWORD | Router API password | 29541227006mikrotik | 29541227006mikrotik |
-| MIKROTIK_PORT | Router API port | 8728 | 8728 |
+**Success response:**
+```json
+{
+  "success": true,
+  "data": {
+    "transactionId": "TXN_1234567890",
+    "mpesaRef": "ws_CO_221020262342335712345678",
+    "status": "pending",
+    "expiresAt": null
+  },
+  "message": "STK Push sent!"
+}
+```
 
 ---
 
-## 4. Verification Summary
+## 5.3 Loan Repayment Flow
 
-- MikroTik router at 192.168.88.1 reachable via ping
-- `RouterOSAPI` connection established successfully
-- `getStatus()`: Connected, 0 active users
-- `getActiveDevices()`: Empty (no active sessions)
-- `whitelistMAC('00:00:5E:B8:22:8A', '24Hrs')`: Binding confirmed on router as `bypassed` with comment `FastNet 24Hrs`
-- M-Pesa callback URL configured via cloudflared tunnel for local development; Render deployment uses its own fixed public URL
-- End-to-end simulated callback test passed: callback received, payment status updated to `completed`, WebSocket `payment_completed` emitted with 136ms latency
+### Step-by-Step
+
+1. User requests loan via `POST /loans/request` (JWT required)
+2. Backend creates `Loan` record with `status=active`, `interestRate=0.1` (10%)
+3. User initiates repayment via `POST /loans/repay/initiate/:loanId`
+4. Backend calculates `totalDue = ceil(amount * (1 + interestRate))`
+5. Backend creates `LoanRepayment` record with `status=pending`
+6. Backend optionally stores MAC address in `UserActivity` (action: `loan_repay_initiated`)
+7. Backend dispatches STK Push with `CheckoutRequestID` containing `LOAN_REPAY_` prefix
+8. Safaricom callback received at `POST /api/mpesa/callback`
+9. Backend detects `isLoanRepayment = checkoutId.includes('LOAN_REPAY')`
+10. On `ResultCode === 0`:
+    - Update `LoanRepayment` to `completed`
+    - Update `Loan` to `status=repaid`, set `repaidAt`, `repaymentAmount`
+    - Create `UserActivity` (action: `loan_repaid_mpesa`)
+    - If MAC address found from recent `loan_repay_initiated` activity:
+      - Call `whitelistMAC(mac, timeLabel)` from `LOAN_WIFI_DURATION_HOURS` env
+      - Create `Payment` record for WiFi access granted
+11. Emit WebSocket loan events via `global.emitLoanEvent`
+
+---
+
+## 5.4 Support Request Flow
+
+1. User submits support request via `POST /api/support/submit`
+2. Backend validates phone format (Kenyan: `+254`, `254`, or `0` prefix)
+3. Backend creates `SupportRequest` with `status=pending`
+4. Backend emits `support_request_created` WebSocket event to user's phone room
+5. Admin updates status via `PUT /api/support/requests/:id/status`
+6. Backend emits `support_status_update` WebSocket event
+7. User can view their own requests via `GET /api/support/user/requests?phone=...`
+
+---
+
+# 6. MikroTik Integration (`config/mikrotik.js`)
+
+## Functions
+
+| Function | Description | Router Command |
+|---|---|---|
+| `whitelistMAC(mac, timeLabel)` | Add IP-binding bypass rule for MAC | `/ip/hotspot/ip-binding/add =mac-address=<MAC> =type=bypassed =comment=FastNet <label>` |
+| `disconnectByMac(mac)` | Remove active hotspot session by MAC | `/ip/hotspot/active/remove =.id=<id>` |
+| `disconnectAllUsers()` | Remove all active hotspot sessions | `/ip/hotspot/active/print` then remove each |
+| `getActiveDevices()` | List active hotspot sessions | `/ip/hotspot/active/print` |
+| `getStatus()` | Get router status and user count | `/ip/hotspot/active/print` |
+| `getDeviceInfoByIP(ip)` | Get device info by IP from active sessions | `/ip/hotspot/active/print` |
+
+## Configuration Required on MikroTik Router
+
+1. Enable API service: `/ip service enable api`
+2. Create API user with appropriate permissions
+3. Hotspot must be configured on `hotspot-bridge` interface
+4. IP-binding table must exist: `/ip hotspot ip-binding`
+
+## Code Patches Applied
+
+- **`Channel.processPacket` patched** to skip MikroTik `!empty` replies (prevents `UNKNOWNREPLY` crash when `/print` returns no data)
+- **`safeWrite()` wrapper** catches `UNKNOWNREPLY` and returns `[]`
+- All `client.write()` calls use array-style parameters (`=key=value`) per `node-routeros` API
+
+## Dev Mode Fallback
+
+If `MIKROTIK_ENABLED=false` or router is unreachable, all functions return success stubs with `[MIKROTIK-FALLBACK]` log messages. No router board required for development.
+
+---
+
+# 7. M-Pesa Configuration (`config/mpesa.js`)
+
+## Functions
+
+| Function | Description |
+|---|---|
+| `getAccessToken()` | OAuth client credentials grant to Daraja API |
+| `stkPush(phone, amount, transactionId)` | Builds STK push payload, posts to `/mpesa/stkpush/v1/processrequest` |
+
+## STK Push Payload Fields
+
+| Field | Value |
+|---|---|
+| `BusinessShortCode` | `MPESA_SHORTCODE` env |
+| `Password` | Base64(shortcode + passkey + timestamp) |
+| `Timestamp` | `YYYYMMDDHHmmss` |
+| `TransactionType` | `CustomerPayBillOnline` |
+| `Amount` | Payment amount |
+| `PartyA` | Customer phone |
+| `PartyB` | Shortcode |
+| `PhoneNumber` | Customer phone |
+| `CallBackURL` | `MPESA_CALLBACK_URL` env |
+| `AccountReference` | `WiFi Payment` |
+| `TransactionDesc` | `WiFi Payment - {transactionId}` |
+
+## Callback URL Split-Brain Prevention
+
+**Problem:** Local `.env` had `MPESA_CALLBACK_URL=https://fastnet.onrender.com/api/mpesa/callback`, causing Safaricom to send callbacks to Render instead of local machine.
+
+**Fix:** Local `.env` uses cloudflared tunnel URL (e.g., `https://<tunnel-id>.trycloudflare.com/api/mpesa/callback`). Render keeps its own fixed URL via Render dashboard env vars.
+
+**Rule:** Never point local `MPESA_CALLBACK_URL` at the Render deployment.
+
+---
+
+# 8. Real-Time Events (Socket.IO)
+
+| Event | Emitted By | Description |
+|---|---|---|
+| `payment_completed` | M-Pesa callback handler | Payment succeeded, WiFi access granted |
+| `payment_failed` | M-Pesa callback handler | Payment failed or cancelled |
+| `loan_eligibility_checked` | Loan eligibility endpoint | Eligibility check result |
+| `loan_application_result` | Loan request endpoint | Loan approved/rejected |
+| `support_request_created` | Support submit endpoint | New support request |
+| `support_status_update` | Support status update | Support request status changed |
+
+**Connection:** `io.on("connection", ...)` with rooms: `loan_<userId>`, `admin_loans`, `support_<phone>`
+
+---
+
+# 9. Setup & Deployment Instructions
+
+## 9.1 Local Development Setup
+
+### Prerequisites
+- Node.js v18+
+- PostgreSQL database
+- MikroTik router (optional, dev mode works without it)
+- cloudflared or ngrok (for M-Pesa callback tunnel)
+
+### Steps
+
+1. **Clone repository:**
+   ```bash
+   git clone <repo-url>
+   cd Hotspot_Billing_System
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   cd frontend && npm install && cd ..
+   ```
+
+3. **Configure environment:**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your values
+   ```
+
+4. **Set up database:**
+   ```bash
+   npx prisma generate
+   npx prisma db push
+   ```
+
+5. **Start M-Pesa callback tunnel (cloudflared):**
+   ```bash
+   cloudflared tunnel --url http://localhost:5000
+   # Copy the https://<tunnel-id>.trycloudflare.com URL
+   # Update MPESA_CALLBACK_URL in .env
+   ```
+
+6. **Start backend server:**
+   ```bash
+   NODE_ENV=production node server.js
+   ```
+
+7. **Start frontend (separate terminal):**
+   ```bash
+   cd frontend && npm run dev
+   ```
+
+## 9.2 Render Deployment
+
+1. Connect repository to Render
+2. Use `render.yaml` for blueprint deployment
+3. Set environment variables in Render dashboard:
+   - `MPESA_CALLBACK_URL=https://fastnet.onrender.com/api/mpesa/callback`
+   - `MPESA_ENABLED=false` (or true if using production Daraja credentials)
+   - `MIKROTIK_ENABLED=false`
+   - All other required vars
+
+4. Deploy: `npm run build && npm start`
+
+---
+
+# 10. Verification Checklist
+
+Before marking any change complete, verify:
+
+- [ ] Backend starts without errors on `node server.js`
+- [ ] MikroTik router reachable: `ping 192.168.88.1`
+- [ ] `getStatus()` returns `success: true` with router connected
+- [ ] `whitelistMAC()` creates binding on router (verify via `/ip hotspot ip-binding print`)
+- [ ] M-Pesa callback URL points to correct environment (tunnel for local, Render URL for deploy)
+- [ ] `POST /api/payments/initiate` creates pending payment record
+- [ ] `POST /api/mpesa/callback` updates payment to `completed` and whitelists MAC
+- [ ] `GET /api/hotspot/check-session?mac=...` returns active session for whitelisted MAC
+- [ ] Frontend builds successfully: `cd frontend && npm run build`
+- [ ] Socket.IO events emit correctly
+- [ ] `docs/LOGIC_FLOW.md` updated to reflect changes
+
+---
+
+# 11. Maintenance Rule
+
+**This document must be updated immediately whenever:**
+- Backend API routes are added, modified, or removed
+- Database schema (`schema.prisma`) is changed
+- MikroTik integration scripts (`config/mikrotik.js`) are modified
+- M-Pesa configuration (`config/mpesa.js`) is changed
+- Frontend pages or API calls are modified
+- Environment variables are added or changed
+
+Update the relevant section of `docs/LOGIC_FLOW.md` to match the codebase state.

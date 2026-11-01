@@ -14,7 +14,6 @@ import { ToastProvider } from "@/components/toast-provider"
 import { toast } from "sonner"
 import { apiClient, type PaymentRequest, wsClient } from "@/lib/api"
 import { useDynamicTitle } from "@/hooks/use-dynamic-title"
-import TrustIndicators from "@/components/TrustIndicators"
 import PackageCard from "@/components/PackageCard"
 import StatusDisplay from "@/components/StatusDisplay"
 import DeviceInfoPanel from "@/components/DeviceInfoPanel"
@@ -321,22 +320,20 @@ const pollPaymentStatus = async (txnId: string) => {
         <main className="site-container py-8 sm:py-12">
           <div className="mx-auto max-w-6xl">
             {/* Hero Section */}
-            <div className="mb-8 rounded-lg bg-sky-50 p-6 text-center shadow-sm dark:bg-sky-950/20 sm:p-10">
+            <div className="mb-8 rounded-lg bg-sky-50 p-6 text-center shadow-sm">
               <p className="section-kicker mb-3 text-sky-600">FastNet WiFi</p>
-              <h1 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-6xl">Get connected, instantly.</h1>
-              <p className="mx-auto mt-4 max-w-2xl text-base text-slate-600 dark:text-slate-300 sm:text-lg">
+              <h1 className="text-4xl font-bold tracking-tight text-black sm:text-6xl">Get connected, instantly.</h1>
+              <p className="mx-auto mt-4 max-w-2xl text-base text-slate-600 sm:text-lg">
                 Choose your internet package and pay securely with M-Pesa. Fast, reliable, and affordable internet
                 access.
               </p>
             </div>
 
-            <TrustIndicators />
-
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Payment Form */}
-              <Card className="border-0 bg-white shadow-sm dark:bg-slate-800">
+              <Card className="border-0 bg-white shadow-sm">
                 <CardHeader className="px-6 pb-2 pt-6">
-                  <CardTitle className="flex text-slate-900 dark:text-white">
+                  <CardTitle className="flex text-black">
                     <Zap className="mr-2 h-5 w-5 text-sky-600" />
                     Quick Payment
                   </CardTitle>
@@ -344,7 +341,7 @@ const pollPaymentStatus = async (txnId: string) => {
                 <CardContent className="space-y-6 px-6 pb-6 pt-4">
                   {/* Phone Input */}
                   <div className="space-y-2">
-                    <Label htmlFor="phone" className="flex text-slate-900 dark:text-white">
+                    <Label htmlFor="phone" className="flex text-black">
                       <Phone className="mr-2 h-4 w-4 text-sky-600" />
                       M-Pesa Number
                     </Label>
@@ -361,7 +358,7 @@ const pollPaymentStatus = async (txnId: string) => {
 
                   {/* Package Selection */}
                   <div className="space-y-4">
-                    <Label className="flex text-slate-900 dark:text-white">
+                    <Label className="flex text-black">
                       <Package className="mr-2 h-4 w-4 text-sky-600" />
                       Select Package
                     </Label>
