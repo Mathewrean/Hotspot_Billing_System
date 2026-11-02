@@ -688,7 +688,7 @@ If `MIKROTIK_ENABLED=false` or router is unreachable, all functions return succe
 ```json
 {
   "buildCommand": "cd frontend && npm install && npm run build",
-  "outputDirectory": "frontend/out",
+  "outputDirectory": "frontend/.next",
   "framework": "nextjs",
   "installCommand": "npm install"
 }
@@ -696,8 +696,9 @@ If `MIKROTIK_ENABLED=false` or router is unreachable, all functions return succe
 
 ### Next.js Configuration (`frontend/next.config.js`)
 
+Standard Next.js build (default `.next/` output) — Vercel expects `routes-manifest.json` which is only generated with standard builds.
+
 ```js
-output: "export",  // Required for Vercel static hosting
 images: { unoptimized: true },
 ```
 
@@ -710,12 +711,12 @@ images: { unoptimized: true },
    - `NEXT_PUBLIC_API_BASE_URL` — Same as above
 4. Deploy
 
-**Important limitations of Vercel static export:**
-- No server-side API routes (frontend only)
+**Important limitations of Vercel:**
+- Frontend only — no server-side API routes
 - No WebSocket/Socket.IO support on Vercel
-- No middleware
 - Backend must be hosted separately (Render, Railway, VPS)
 - The frontend communicates with the backend via REST API calls
+
 
 # 10. Frontend UI/UX
 
