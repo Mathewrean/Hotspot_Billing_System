@@ -31,6 +31,8 @@ const handle = nextApp.getRequestHandler();
 const PORT = Number(process.env.PORT || 5000);
 const app = express();
 
+app.set('trust proxy', true);
+
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
@@ -247,18 +249,26 @@ app.get("/api/device/info", async (req, res) => {
     const socketRemote = req.socket?.remoteAddress;
     const clientIp = (Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(",")[0]) || socketRemote || "127.0.0.1";
     const ipAddress = String(clientIp).replace(/^::ffff:/, "");
+
+    // Allow frontend to pass MAC directly (captured from captive portal URL ?mac= param)
+    const macParam = req.query.mac;
+    if (macParam && /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/.test(String(macParam))) {
+      console.log(`[DEVICE-INFO] MAC from URL param: ${macParam} for IP ${ipAddress}`);
+      return res.json({ success: true, data: { macAddress: String(macParam).toUpperCase(), ipAddress, deviceId: `DEV_${String(macParam).replace(/:/g, "").slice(0, 6)}` } });
+    }
+
     const result = await getDeviceInfoByIP(ipAddress);
     if (result.success) return res.json({ success: true, data: result.data });
 
     return res.json({
       success: true,
-      data: { macAddress: "00:11:22:33:44:55", ipAddress, deviceId: "DEV001" },
+      data: { macAddress: "MAC_NOT_FOUND", ipAddress, deviceId: "DEV_UNKNOWN" },
     });
   } catch (error) {
     logger.error("Error retrieving device information", { error: error.message });
     return res.json({
       success: true,
-      data: { macAddress: "00:11:22:33:44:55", ipAddress: "127.0.0.1", deviceId: "DEV001" },
+      data: { macAddress: "MAC_NOT_FOUND", ipAddress: "127.0.0.1", deviceId: "DEV_UNKNOWN" },
     });
   }
 });

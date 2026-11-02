@@ -166,16 +166,19 @@ async function getStatus() {
 async function getDeviceInfoByIP(ipAddress) {
   const client = getClient();
   if (!client) {
+    // Dev mode fallback: derive a deterministic MAC from IP hash
     let hash = 0;
     const ip = String(ipAddress || "127.0.0.1");
     for (let i = 0; i < ip.length; i++) {
       hash = (hash * 31 + ip.charCodeAt(i)) >>> 0;
     }
     const hex = hash.toString(16).padStart(12, "0").slice(0, 12);
+    const derivedMac = `${hex.slice(0,2)}:${hex.slice(2,4)}:${hex.slice(4,6)}:${hex.slice(6,8)}:${hex.slice(8,10)}:${hex.slice(10,12)}`;
+    console.log(`[DEVICE-INFO] Dev mode: derived MAC ${derivedMac} for IP ${ipAddress}`);
     return {
       success: true,
       data: {
-        macAddress: `${hex.slice(0,2)}:${hex.slice(2,4)}:${hex.slice(4,6)}:${hex.slice(6,8)}:${hex.slice(8,10)}:${hex.slice(10,12)}`,
+        macAddress: derivedMac,
         ipAddress: ip,
         deviceId: `DEV_${hex.slice(0, 6)}`
       }
@@ -184,31 +187,58 @@ async function getDeviceInfoByIP(ipAddress) {
 
   try {
     await client.connect();
-    const active = await safeWrite(client,"/ip/hotspot/active/print");
-    await client.close();
 
-    const device = (active || []).find((a) => a.address === ipAddress);
-    if (device) {
-      return {
-        success: true,
-        data: {
-          macAddress: device["mac-address"],
-          ipAddress: device.address,
-          deviceId: device["user"] || `DEV_${device[".id"]}`
-        }
-      };
+    // First: try MikroTik ARP table (most reliable for real device MAC)
+    const arpEntries = await safeWrite(client, "/ip/arp/print");
+    if (arpEntries && arpEntries.length > 0) {
+      const arpMatch = arpEntries.find((a) => a.address === ipAddress);
+      if (arpMatch && arpMatch["mac-address"]) {
+        const realMac = arpMatch["mac-address"];
+        console.log(`[DEVICE-INFO] ARP table: found MAC ${realMac} for IP ${ipAddress}`);
+        await client.close();
+        return {
+          success: true,
+          data: {
+            macAddress: realMac,
+            ipAddress: ipAddress,
+            deviceId: `DEV_${realMac.replace(/:/g, "").slice(0, 6)}`
+          }
+        };
+      }
     }
 
+    // Second: try /ip/hotspot/active/print (device might already be in active sessions)
+    const active = await safeWrite(client, "/ip/hotspot/active/print");
+    if (active && active.length > 0) {
+      const device = active.find((a) => a.address === ipAddress);
+      if (device && device["mac-address"]) {
+        const realMac = device["mac-address"];
+        console.log(`[DEVICE-INFO] Hotspot active: found MAC ${realMac} for IP ${ipAddress}`);
+        await client.close();
+        return {
+          success: true,
+          data: {
+            macAddress: realMac,
+            ipAddress: device.address,
+            deviceId: device["user"] || `DEV_${device[".id"]}`
+          }
+        };
+      }
+    }
+
+    // No real MAC found — return unknown rather than a hardcoded placeholder
+    console.log(`[DEVICE-INFO] No real MAC found for IP ${ipAddress}, returning MAC_NOT_FOUND`);
+    await client.close();
     return {
       success: true,
-      data: { macAddress: "00:11:22:33:44:55", ipAddress, deviceId: "DEV001" }
+      data: { macAddress: "MAC_NOT_FOUND", ipAddress, deviceId: "DEV_UNKNOWN" }
     };
   } catch (error) {
     console.error("MikroTik getDeviceInfoByIP error:", error);
     try { await client.close(); } catch (_) {}
     return {
       success: true,
-      data: { macAddress: "00:11:22:33:44:55", ipAddress, deviceId: "DEV001" }
+      data: { macAddress: "MAC_NOT_FOUND", ipAddress, deviceId: "DEV_UNKNOWN" }
     };
   }
 }

@@ -49,7 +49,15 @@ export default function UserPortal() {
   const activeCheckoutId = useRef<string | null>(null)
 
   useEffect(() => {
-    fetchDeviceInfo()
+    // Capture MAC address from captive portal URL (?mac=...&ip=...)
+    const urlParams = new URLSearchParams(window.location.search)
+    const macFromUrl = urlParams.get("mac")
+    if (macFromUrl && /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/.test(macFromUrl)) {
+      setMacAddress(macFromUrl.toUpperCase())
+      console.info("[device-info] MAC captured from captive portal URL", { mac: macFromUrl.toUpperCase() })
+    } else {
+      fetchDeviceInfo()
+    }
   }, [])
 
   // WebSocket listener for real-time payment completion

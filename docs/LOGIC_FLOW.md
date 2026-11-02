@@ -468,7 +468,7 @@ Render uses its own environment variable dashboard. The `render.yaml` file defin
 | `disconnectAllUsers()` | Remove all active hotspot sessions | `/ip/hotspot/active/print` then remove each |
 | `getActiveDevices()` | List active hotspot sessions | `/ip/hotspot/active/print` |
 | `getStatus()` | Get router status and user count | `/ip/hotspot/active/print` |
-| `getDeviceInfoByIP(ip)` | Get device info by IP from active sessions | `/ip/hotspot/active/print` |
+| `getDeviceInfoByIP(ip)` | Get device info by IP — queries ARP table first, then hotspot active sessions | `/ip/arp/print`, `/ip/hotspot/active/print` |
 
 ## Configuration Required on MikroTik Router
 
@@ -483,10 +483,48 @@ Render uses its own environment variable dashboard. The `render.yaml` file defin
 - **`Channel.processPacket` patched** to skip MikroTik `!empty` replies (prevents `UNKNOWNREPLY` crash when `/print` returns no data)
 - **`safeWrite()` wrapper** catches `UNKNOWNREPLY` and returns `[]`
 - All `client.write()` calls use array-style parameters (`=key=value`) per `node-routeros` API
+- **`getDeviceInfoByIP()` enhanced** to query `/ip/arp/print` before `/ip/hotspot/active/print` — ARP table contains real device MAC even when device not yet in active hotspot sessions
+- **Hardcoded placeholder MAC `00:11:22:33:44:55` removed** from all fallbacks — returns `MAC_NOT_FOUND` instead when real MAC cannot be determined
+- **`/api/device/info` accepts `mac` query parameter** — frontend can pass real MAC captured from captive portal URL (`?mac=...`)
 
-## Dev Mode Fallback
+## MAC Capture Flow
+
+### How the real device MAC is obtained:
+
+1. **Captive Portal Redirect**: MikroTik intercepts the device's first HTTP request and redirects to the login page with `?mac=REAL_MAC&ip=192.168.10.x`
+2. **Frontend URL Parameter Capture**: `page.tsx` and `packages/page.tsx` read the `mac` query parameter from `window.location.search` on page load
+3. **Backend `/api/device/info`**: Accepts optional `mac` query parameter — if provided and valid MAC format, uses it directly
+4. **Backend ARP Fallback**: If no MAC param, `getDeviceInfoByIP()` queries MikroTik `/ip/arp/print` to find the real MAC for the client's IP address
+5. **Hotspot Active Sessions Fallback**: If ARP has no match, checks `/ip/hotspot/active/print`
+6. **Last Resort**: Returns `MAC_NOT_FOUND` (never returns a hardcoded placeholder like `00:11:22:33:44:55`)
+
+### Router command to clean stale placeholder bindings:
+
+```
+/ip hotspot ip-binding remove [find mac-address=00:11:22:33:44:55]
+```
+
+## M-Pesa Callback Decoupling
+
+### Fix applied to `routes/mpesaCallback.js`:
+
+**Before (broken):** DB update (`status: completed`) and WebSocket `payment_completed` emit were INSIDE `if (mikrotikResponse.success)`. A whitelist failure (e.g., duplicate binding) prevented payment confirmation — user paid but dashboard never updated.
+
+**After (fixed):** Three independent steps execute in order:
+1. **DB Update FIRST**: Payment marked `completed` with `expiresAt` — always happens on `ResultCode === 0`
+2. **WebSocket SECOND**: `payment_completed` emitted — always happens after DB update
+3. **Whitelist THIRD**: `whitelistMAC()` attempted independently — failure is logged but does NOT block payment confirmation
+
+This ensures: **money received = payment confirmed**, regardless of router-side whitelist outcome. Whitelist failures are retriable via the admin "Force Whitelist MAC" action on `/admin/transactions`.
+
 
 If `MIKROTIK_ENABLED=false` or router is unreachable, all functions return success stubs with `[MIKROTIK-FALLBACK]` log messages. No router board required for development.
+
+## Dev Mode Fallback Behavior
+
+- `MIKROTIK_ENABLED=false`: All MikroTik functions return `{ success: true, message: "Dev mode: ..." }` — no router board needed for development
+- Router unreachable: `getClient()` returns null, functions gracefully fall back to dev mode
+- `[MIKROTIK-FALLBACK]` prefix on all fallback log messages for easy identification
 
 ---
 

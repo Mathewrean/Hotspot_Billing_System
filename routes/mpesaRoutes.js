@@ -45,7 +45,7 @@ router.post("/payments/initiate", async (req, res) => {
     normalizedMac = `${hex.slice(0,2)}:${hex.slice(2,4)}:${hex.slice(4,6)}:${hex.slice(6,8)}:${hex.slice(8,10)}:${hex.slice(10,12)}`;
   }
 
-  logger.info("Payment initiation requested", { phone: normalizedPhone, amount: parsedAmount });
+  logger.info("Payment initiation requested", { phone: normalizedPhone, amount: parsedAmount, macAddress: normalizedMac, sourceMac: macAddress });
 
   const transactionId = `TXN_${Date.now()}`;
 

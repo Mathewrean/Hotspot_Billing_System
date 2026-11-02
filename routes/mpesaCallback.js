@@ -209,54 +209,60 @@ router.post("/mpesa/callback", async (req, res) => {
       else if (Number(amount) === 20) time = "12Hrs";
       else if (Number(amount) === 15) time = "4Hrs";
 
-      logger.info(`Whitelisting MAC for payment`, { mac, time, amount });
+      logger.info(`Payment callback: MAC=${mac}, time=${time}, amount=${amount}`, { checkoutId, mac, time, amount });
 
-      const mikrotikResponse = await whitelistMAC(mac, time);
+      // STEP 1: Calculate expiry time and update DB to completed FIRST
+      // Payment success must never be gated on MikroTik whitelist result
+      let expiryHours = 1; // Default 1 hour
+      if (Number(amount) === 30) expiryHours = 24;
+      else if (Number(amount) === 20) expiryHours = 12;
+      else if (Number(amount) === 15) expiryHours = 4;
 
-      if (mikrotikResponse.success) {
-        // Calculate expiry time based on amount
-        let expiryHours = 1; // Default 1 hour
-        if (Number(amount) === 30) expiryHours = 24;
-        else if (Number(amount) === 20) expiryHours = 12;
-        else if (Number(amount) === 15) expiryHours = 4;
+      const expiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000);
 
-        const expiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000);
-
-        // Update payment status using parameterized query - ONLY when M-Pesa PIN is entered and payment succeeds
-        await prisma.payment.updateMany({
-          where: { mpesaRef: checkoutId },
-          data: {
-            status: "completed",
-            expiresAt: expiresAt
-          }
-        });
-
-        logger.info(`Payment completed`, { checkoutId, amount, expiresAt });
-
-        // Emit WebSocket event for real-time frontend update
-        try {
-          if (global.io) {
-            const wsEmittedAt = Date.now();
-            global.io.emit("payment_completed", {
-              checkoutId,
-              amount,
-              expiresAt,
-              macAddress: mac,
-              status: "completed"
-            });
-          logger.info("WebSocket payment_completed emitted", { checkoutId, callbackReceivedAt, wsEmittedAt, latencyMs: wsEmittedAt - callbackReceivedAt, connectedClients: global.io.engine?.clientsCount ?? 0 });
-          } else {
-            logger.warn("Socket.IO unavailable while emitting payment_completed", { checkoutId });
-          }
-        } catch (wsError) {
-          logger.error("WebSocket emit failed", { error: wsError.message, checkoutId });
+      await prisma.payment.updateMany({
+        where: { mpesaRef: checkoutId },
+        data: {
+          status: "completed",
+          expiresAt: expiresAt
         }
+      });
 
-        return res.json({ success: true, message: mikrotikResponse.message });
-      } else {
-        logger.error("MikroTik whitelist failed", { mac, error: mikrotikResponse.message });
-        return res.status(500).json({ success: false, error: "MikroTik whitelist failed" });
+      logger.info(`Payment completed (DB updated)`, { checkoutId, amount, expiresAt, mac });
+
+      // STEP 2: Emit WebSocket event for real-time frontend update
+      try {
+        if (global.io) {
+          const wsEmittedAt = Date.now();
+          global.io.emit("payment_completed", {
+            checkoutId,
+            amount,
+            expiresAt,
+            macAddress: mac,
+            status: "completed"
+          });
+          logger.info("WebSocket payment_completed emitted", { checkoutId, callbackReceivedAt, wsEmittedAt, latencyMs: wsEmittedAt - callbackReceivedAt, connectedClients: global.io.engine?.clientsCount ?? 0 });
+        } else {
+          logger.warn("Socket.IO unavailable while emitting payment_completed", { checkoutId });
+        }
+      } catch (wsError) {
+        logger.error("WebSocket emit failed", { error: wsError.message, checkoutId });
       }
+
+      // STEP 3: Attempt MikroTik whitelist independently — failure does NOT block payment confirmation
+      try {
+        const mikrotikResponse = await whitelistMAC(mac, time);
+        if (mikrotikResponse.success) {
+          logger.info(`MikroTik whitelist succeeded`, { mac, time, message: mikrotikResponse.message });
+        } else {
+          logger.warn(`MikroTik whitelist returned non-success (payment still confirmed)`, { mac, time, message: mikrotikResponse.message });
+        }
+      } catch (mikrotikError) {
+        logger.error(`MikroTik whitelist threw exception (payment still confirmed)`, { mac, time, error: mikrotikError.message });
+      }
+
+      // STEP 4: Return success to Safaricom regardless of whitelist outcome
+      return res.json({ success: true, message: "Payment completed successfully" });
     }
   } catch (error) {
     logger.error("Database error in M-Pesa callback", { error: error.message, checkoutId });
