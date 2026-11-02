@@ -13,6 +13,7 @@ const nextConfig = {
   images: {
     unoptimized: true, // Useful for static export
   },
+  output: "export",
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
     NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,

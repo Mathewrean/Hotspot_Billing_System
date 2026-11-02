@@ -688,10 +688,17 @@ If `MIKROTIK_ENABLED=false` or router is unreachable, all functions return succe
 ```json
 {
   "buildCommand": "cd frontend && npm install && npm run build",
-  "outputDirectory": "frontend/.next",
+  "outputDirectory": "frontend/out",
   "framework": "nextjs",
   "installCommand": "npm install"
 }
+```
+
+### Next.js Configuration (`frontend/next.config.js`)
+
+```js
+output: "export",  // Required for Vercel static hosting
+images: { unoptimized: true },
 ```
 
 ### Steps
@@ -703,9 +710,12 @@ If `MIKROTIK_ENABLED=false` or router is unreachable, all functions return succe
    - `NEXT_PUBLIC_API_BASE_URL` — Same as above
 4. Deploy
 
-The frontend will communicate with the backend via REST API and WebSocket. The backend must be reachable publicly for M-Pesa callbacks to work.
-
----
+**Important limitations of Vercel static export:**
+- No server-side API routes (frontend only)
+- No WebSocket/Socket.IO support on Vercel
+- No middleware
+- Backend must be hosted separately (Render, Railway, VPS)
+- The frontend communicates with the backend via REST API calls
 
 # 10. Frontend UI/UX
 
