@@ -48,7 +48,7 @@ Node.js Backend (Express)
 |---|---|---|
 | `PORT` | `5000` | Backend server port |
 | `NODE_ENV` | `production` | Node environment |
-| `DATABASE_URL` | `postgresql://wifi_user:secure_password@localhost:5432/wifi_billing` | PostgreSQL connection string |
+| `DATABASE_URL` | `postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true` | Supabase PostgreSQL connection string |
 | `JWT_SECRET` | `your-secure-random-jwt-secret` | JWT signing secret |
 | `ADMIN_USERNAME` | `mathew_admin` | Primary admin username |
 | `ADMIN_PASSWORD` | `29541227006` | Primary admin password |
@@ -58,13 +58,24 @@ Node.js Backend (Express)
 | `MPESA_CONSUMER_SECRET` | `yeq1i9buL1zHN5skYE77Oiip4vAxxe8vIiJNbESSN3Keefw056Am3IXl6YGqllAi` | Daraja consumer secret |
 | `MPESA_SHORTCODE` | `174379` | M-Pesa paybill shortcode |
 | `MPESA_PASSKEY` | `bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919` | M-Pesa passkey |
-| `MPESA_CALLBACK_URL` | `https://<tunnel>.trycloudflare.com/api/mpesa/callback` | Public HTTPS URL for Safaricom callbacks |
+| `MPESA_CALLBACK_URL` | `https://<tunnel-id>.trycloudflare.com/api/mpesa/callback` | Public HTTPS URL for Safaricom callbacks |
 | `MIKROTIK_ENABLED` | `true` | Enable router integration |
 | `MIKROTIK_HOST` | `192.168.88.1` | MikroTik router IP |
 | `MIKROTIK_USER` | `admin` | Router API username |
 | `MIKROTIK_PASSWORD` | `29541227006mikrotik` | Router API password |
 | `MIKROTIK_PORT` | `8728` | Router API port |
 | `LOAN_WIFI_DURATION_HOURS` | `1` | WiFi duration granted after loan repayment |
+
+## Supabase Configuration
+
+The database is hosted on Supabase (`vbulozklwemfwlsunhho`). The connection string uses the connection pooler (port 6543) with `?pgbouncer=true` appended to avoid prepared statement errors.
+
+**Important:** `prisma db push` does not work directly with Supabase pgbouncer due to prepared statement limitations. To deploy schema changes:
+
+1. Generate SQL: `npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > schema.sql`
+2. Execute via psql: `PGPASSWORD=<password> psql "host=<host> port=6543 dbname=postgres user=<user>" -f schema.sql`
+
+Or use the direct connection (port 5432) if available.
 
 ## Render Deployment
 
@@ -76,6 +87,23 @@ Render uses its own environment variable dashboard. The `render.yaml` file defin
 - `MPESA_CALLBACK_URL` set via Render dashboard to `https://fastnet.onrender.com/api/mpesa/callback`
 
 **Critical:** Local `.env` `MPESA_CALLBACK_URL` must point to a public tunnel (cloudflared/ngrok) to `localhost:5000`, NOT to Render. Pointing local at Render causes split-brain: callbacks go to Render's database, not local.
+
+## Express Configuration
+
+`app.set('trust proxy', true)` is set in `server.js` to correctly parse `X-Forwarded-For` headers behind the Cloudflare tunnel proxy. This prevents `ERR_ERL_UNEXPECTED_X_FORWARDED_FOR` rate-limiting errors.
+
+## Startup Script (`start.sh`)
+
+Run `bash start.sh` to start the full stack:
+
+1. Starts cloudflared tunnel on port 5000
+2. Auto-extracts the trycloudflare URL
+3. Updates `MPESA_CALLBACK_URL` in `.env` dynamically
+4. Starts Node.js server
+5. Displays QR code for mobile portal access
+6. Shows structured summary with PIDs, URLs, and callback endpoint
+
+Press `Ctrl+C` to stop both server and tunnel.
 
 ---
 
@@ -608,10 +636,18 @@ If `MIKROTIK_ENABLED=false` or router is unreachable, all functions return succe
    # Edit .env with your values
    ```
 
-4. **Set up database:**
+4. **Set up database (Supabase):**
    ```bash
+   # Update .env with Supabase DATABASE_URL (see .env.example for format)
+   # Must include ?pgbouncer=true for pooler compatibility
+   DATABASE_URL=postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+
    npx prisma generate
-   npx prisma db push
+
+   # prisma db push does not work with Supabase pgbouncer.
+   # Generate SQL and execute directly:
+   npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > /tmp/schema.sql
+   PGPASSWORD=<password> psql "host=aws-0-eu-west-1.pooler.supabase.com port=6543 dbname=postgres user=<user>" -f /tmp/schema.sql
    ```
 
 5. **Start M-Pesa callback tunnel (cloudflared):**
