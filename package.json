@@ -7,7 +7,7 @@
   "author": "Mathewrean",
   "license": "ISC",
   "engines": {
-    "node": ">=18 <=22"
+    "node": "22.x"
   },
   "scripts": {
     "dev": "cd frontend && npm run dev",
