@@ -679,6 +679,32 @@ If `MIKROTIK_ENABLED=false` or router is unreachable, all functions return succe
 
 4. Deploy: `npm run build && npm start`
 
+## 9.3 Vercel Frontend Deployment
+
+**Important:** Vercel can only host the Next.js frontend. The Express backend cannot run on Vercel (serverless environment). Deploy the backend separately on Render, Railway, or a VPS.
+
+### Vercel Configuration (`vercel.json`)
+
+```json
+{
+  "buildCommand": "cd frontend && npm install && npm run build",
+  "outputDirectory": "frontend/.next",
+  "framework": "nextjs",
+  "installCommand": "npm install"
+}
+```
+
+### Steps
+
+1. Connect the GitHub repository to Vercel
+2. Vercel auto-detects `vercel.json` at root
+3. Set environment variables in Vercel dashboard:
+   - `NEXT_PUBLIC_API_URL` — Backend API URL (e.g., `https://fastnet.onrender.com` or your VPS URL)
+   - `NEXT_PUBLIC_API_BASE_URL` — Same as above
+4. Deploy
+
+The frontend will communicate with the backend via REST API and WebSocket. The backend must be reachable publicly for M-Pesa callbacks to work.
+
 ---
 
 # 10. Frontend UI/UX
