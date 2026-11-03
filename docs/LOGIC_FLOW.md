@@ -90,7 +90,7 @@ Render uses its own environment variable dashboard. The `render.yaml` file defin
 
 ## Express Configuration
 
-`app.set('trust proxy', true)` is set in `server.js` to correctly parse `X-Forwarded-For` headers behind the Cloudflare tunnel proxy. This prevents `ERR_ERL_UNEXPECTED_X_FORWARDED_FOR` rate-limiting errors.
+`app.set('trust proxy', 1)` is set in `server.js` to correctly parse `X-Forwarded-For` headers behind the Render/Cloudflare proxy. Using `1` (single proxy hop) instead of `true` prevents `ERR_ERL_PERMISSIVE_TRUST_PROXY` errors with `express-rate-limit`.
 
 ## Startup Script (`start.sh`)
 
