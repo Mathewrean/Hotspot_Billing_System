@@ -667,17 +667,60 @@ If `MIKROTIK_ENABLED=false` or router is unreachable, all functions return succe
    cd frontend && npm run dev
    ```
 
-## 9.2 Render Deployment
+## 9.2 Render Deployment (Manual Web Service — No Blueprint, No Docker)
 
-1. Connect repository to Render
-2. Use `render.yaml` for blueprint deployment
-3. Set environment variables in Render dashboard:
-   - `MPESA_CALLBACK_URL=https://fastnet.onrender.com/api/mpesa/callback`
-   - `MPESA_ENABLED=false` (or true if using production Daraja credentials)
-   - `MIKROTIK_ENABLED=false`
-   - All other required vars
+**Important:** `Dockerfile` and `render.yaml` have been renamed to `.disabled` to prevent Render from auto-detecting Docker/blueprint deployment. Render uses standard Node.js detection with `engines: 22.x` from `package.json`.
 
-4. Deploy: `npm run build && npm start`
+### Steps
+
+1. **Create Web Service:**
+   - Log in to [Render Dashboard](https://dashboard.render.com)
+   - Click **New +** → **Web Service**
+   - Connect GitHub, select `Mathewrean/Hotspot_Billing_System`, branch `main`
+   - **Runtime:** `Node`
+   - **Region:** Choose closest to your users
+   - **Branch:** `main`
+
+2. **Configure Build & Start Commands:**
+   | Field | Value |
+   |-------|-------|
+   | **Build Command** | `npm install && npx prisma generate` |
+   | **Start Command** | `NODE_ENV=production node server.js` |
+   | **Node Version** | `22` |
+
+3. **Add Environment Variables** (Render Dashboard → Service → Environment):
+
+   | Variable | Value |
+   |----------|-------|
+   | `NODE_ENV` | `production` |
+   | `PORT` | `10000` |
+   | `DATABASE_URL` | `postgresql://postgres.vbulozklwemfwlsunhho:29541227006m@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true` |
+   | `JWT_SECRET` | `<generate-strong-secret>` |
+   | `ADMIN_USERNAME` | `mathew_admin` |
+   | `ADMIN_PASSWORD` | `29541227006` |
+   | `ADMIN_EMAIL` | `mathewrean@gmail.com` |
+   | `MPESA_ENABLED` | `true` |
+   | `MPESA_CONSUMER_KEY` | `2JlnnkngmmfrrdhxigyZQFGkK5bDBPoQrfesurkJ7KnuBrlZ` |
+   | `MPESA_CONSUMER_SECRET` | `yeq1i9buL1zHN5skYE77Oiip4vAxxe8vIiJNbESSN3Keefw056Am3IXl6YGqllAi` |
+   | `MPESA_SHORTCODE` | `174379` |
+   | `MPESA_PASSKEY` | `bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919` |
+   | `MPESA_CALLBACK_URL` | `https://<your-service>.onrender.com/api/mpesa/callback` |
+   | `MIKROTIK_ENABLED` | `false` |
+   | `MIKROTIK_HOST` | `192.168.88.1` |
+   | `MIKROTIK_USER` | `admin` |
+   | `MIKROTIK_PASSWORD` | `29541227006mikrotik` |
+   | `MIKROTIK_PORT` | `8728` |
+   | `LOAN_WIFI_DURATION_HOURS` | `1` |
+
+   > **Important:** Set `MIKROTIK_ENABLED=false` on Render. Render cannot reach your local MikroTik at `192.168.88.1` (private IP).
+
+4. **Create the Service:** Click **Create Web Service**
+
+5. **Update M-Pesa Callback URL:** After Render assigns your service URL, update `MPESA_CALLBACK_URL` to `https://<your-service>.onrender.com/api/mpesa/callback`
+
+6. **Verify:** `curl https://<your-service>.onrender.com/welcome` → `{"message":"Welcome to the FastNet WiFi Billing API"}`
+
+---
 
 ## 9.3 Vercel Frontend Deployment
 
