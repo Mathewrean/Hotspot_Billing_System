@@ -4,7 +4,6 @@ const express = require("express");
 const cors = require("cors");
 const http = require("http");
 const jwt = require("jsonwebtoken");
-const next = require("next");
 const socketIo = require("socket.io");
 const prisma = require("./config/prismaClient");
 const logger = require("./src/logger");
@@ -25,9 +24,6 @@ const supportRoutes = require("./routes/support");
 const transactionRoutes = require("./routes/transactions");
 const hotspotAuthRoutes = require("./routes/hotspotAuth");
 
-const dev = process.env.NODE_ENV !== "production";
-const nextApp = next({ dev, dir: "./frontend" });
-const handle = nextApp.getRequestHandler();
 const PORT = Number(process.env.PORT || 5000);
 const app = express();
 
@@ -276,9 +272,6 @@ app.get("/api/device/info", async (req, res) => {
 app.get("/welcome", (req, res) => res.json({ message: "Welcome to the FastNet WiFi Billing API" }));
 
 async function start() {
-  await nextApp.prepare();
-  app.all("/{*splat}", (req, res) => handle(req, res));
-
   const server = http.createServer(app);
   const io = socketIo(server, { cors: { origin: true, methods: ["GET", "POST"] } });
   global.io = io;
